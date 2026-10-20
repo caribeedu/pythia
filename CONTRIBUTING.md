@@ -12,7 +12,7 @@ Thanks for your interest in Pythia. Before proposing a change, read [docs/design
 
 ## Development setup
 
-You need Python 3.13+, [uv](https://docs.astral.sh/uv/) and Docker.
+You need Python 3.13 or 3.14, [uv](https://docs.astral.sh/uv/) and Docker.
 
 ```bash
 uv sync
