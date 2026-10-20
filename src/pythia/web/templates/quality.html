@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% block title %}Quality{% endblock %}
+{% block body %}
+<main>
+  <h1>Quality</h1>
+  <p class="sub">Each correction of yours is a confirmed error of the system. Golden questions guard against regression when changing prompts, models or schema.</p>
+
+  <h2>Value: what it costs and what reaches the LLMs</h2>
+  <p class="muted">Honest cost, from the measurement method (<span class="mono">docs/measuring-value.md</span>). <strong>Maintain</strong> = having the knowledge (ingestion, synthesis, sweep); <strong>serve</strong> = delivering it (the push); <strong>measure</strong> = golden questions. Database queries only, no LLM.</p>
+  {% for mo in val.months %}{% if mo.total > 0 %}
+  <div class="card">
+    <div class="row"><strong>{{ mo.start.strftime('%m/%Y') }}</strong> <span>US${{ '%.2f'|format(mo.total) }}</span>
+      {% for b in ('maintain', 'serve', 'measure') %}<span class="chip">{{ b }} US${{ '%.2f'|format(mo.buckets[b]) }} ({{ '%.0f'|format(100 * mo.buckets[b] / mo.total) }}%)</span>{% endfor %}
+      <span class="muted">· {{ mo.deliveries.pushes }} pushes · {{ mo.deliveries.mcp }} MCP calls · US${{ '%.2f'|format(mo.batch) }} in batch (50% cheaper)</span></div>
+    <table style="margin-top:8px"><tr><th>Source</th><th>Cost to maintain</th><th>Current claims</th><th>Reached an LLM</th><th>Cost per claim that reached</th></tr>
+      {% for s in mo.sources %}<tr><td>{{ s.label }}</td><td>US${{ '%.2f'|format(s.usd) }}</td>
+        {% if s.shared %}<td colspan="3" class="muted">serves all sources; not divided by claim</td>
+        {% else %}<td>{{ s.living }}</td><td>{{ s.delivered }}{% if s.living %} ({{ '%.0f'|format(100 * s.delivered / s.living) }}%){% endif %} <span class="muted">push {{ s.by_push }} · MCP {{ s.by_mcp }}</span></td>
+        <td>{{ ('US$%.3f'|format(s.usd_per_delivered)) if s.usd_per_delivered is not none else '—' }}</td>{% endif %}</tr>{% endfor %}
+    </table>
+    <details style="margin-top:6px"><summary>By role</summary>
+      <table>{% for r in mo.roles %}<tr><td class="mono">{{ r.role }}</td><td>{{ r.bucket }}</td><td>US${{ '%.2f'|format(r.usd) }}</td><td class="muted">{{ r.calls }} calls</td></tr>{% endfor %}</table>
+    </details>
+    <details><summary>What these numbers do not count</summary>
+      <ul>{% for c in mo.coverage %}<li class="muted">{{ c }}</li>{% endfor %}</ul>
+    </details>
+  </div>
+  {% endif %}{% endfor %}
+  <div class="card"><strong>Was what was delivered used?</strong> <span class="muted">(step 0.2; read from the Claude Code transcripts, cached for 30 min)</span>
+    {% if usage %}{% for u in usage.months %}{% if u.delivered %}
+    <div style="margin-top:6px">{{ u.start[:7] }}: <strong>{{ u.used_explicitly }}</strong> of {{ u.delivered }} pushed references were used explicitly
+      ({{ '%.1f'|format(100 * u.floor) }}%) in {{ u.sessions }} sessions{% if u.missing_transcripts %} ({{ u.missing_transcripts }} without a transcript){% endif %} ·
+      MCP used in {{ u.sessions_with_mcp }} session(s){% if u.tools %}: {% for t, n in u.tools.items() %}{{ t }} {{ n }}× {% endfor %}{% endif %}
+      {% if u.open_levels %} · open by level: {% for l, n in u.open_levels.items() %}{{ l }}: {{ n }} {% endfor %}{% endif %}</div>
+    {% endif %}{% endfor %}
+    <p class="muted">This is a <strong>floor</strong>: it counts only when the assistant cites the ID (of the page or of a claim it cited) or opens the reference through the MCP after the push. When it uses the content without citing it, it does not show up here; that is measured by the judge of step 0.4.</p>
+    {% else %}<p class="muted">Could not read the Claude Code transcripts.</p>{% endif %}
+  </div>
+  <div class="card"><strong>Avoidable re-explanation</strong> <span class="muted">(step 0.4; north-star metric: how many times you explained to an LLM something Pythia already knew)</span>
+    {% set t = rx.totals %}
+    {% if t.sessions %}
+    <div style="margin-top:6px">{{ t.sessions }} sessions · {{ t.msgs }} messages from you · {{ t.asserts }} assert something ·
+      <strong>{{ t.delivered + t.not_delivered }}</strong> repeated what Pythia knew
+      (<span class="chip warn">{{ t.delivered }} was in the push</span> <span class="chip">{{ t.not_delivered }} was not delivered</span>) ·
+      {{ t.new }} were new context.
+      {% if t.med_tokens_until_edit %}Median until the first edit: {{ '%.0f'|format(t.med_tokens_until_edit / 1000) }}k tokens, {{ '%.0f'|format(t.med_explore_until_edit or 0) }} exploration calls.{% endif %}</div>
+    <p class="muted">Judge: {% if rx.agreement.n %}agrees with you on {{ '%.0f'|format(100 * rx.agreement.agree) }}% of {{ rx.agreement.n }} messages{% if rx.agreement.kappa is not none %} (kappa {{ '%.2f'|format(rx.agreement.kappa) }}){% endif %}{% else %}not validated yet{% endif %} · <a href="/value/label">validate (label ~30 messages)</a>. Until it is validated, treat the numbers as provisional.</p>
+    <details><summary>By session</summary><table><tr><th>Start</th><th>Chat</th><th>Messages</th><th>Assert</th><th>In the push</th><th>Not delivered</th><th>New</th><th>Tokens until edit</th><th>Exploration until edit</th></tr>
+      {% for s in rx.sessions %}<tr><td>{{ s.started_at|dt }}</td><td>{{ s.chat_title or '—' }}</td><td>{{ s.user_messages }}</td><td>{{ s.asserts }}</td><td>{{ s.avoidable_delivered }}</td><td>{{ s.avoidable_not_delivered }}</td><td>{{ s.new_context }}</td>
+        <td>{{ ('%.0fk'|format(s.tokens_until_edit / 1000)) if s.tokens_until_edit else '—' }}</td><td>{{ s.explore_until_edit if s.explore_until_edit is not none else '—' }}</td></tr>{% endfor %}</table></details>
+    {% else %}<p class="muted">Not measured yet.</p>{% endif %}
+    <form method="post" action="/action/measure-reexplain" class="row" style="margin-top:6px"><label style="margin:0">Last <input type="number" name="days" value="30" style="width:70px"> days</label><button>Measure now</button></form>
+  </div>
+  <details class="card"><summary>Spend per day (last 14 days; no projection, because backfills are one-off spends)</summary>
+    <table><tr><th>Day</th><th>Maintain</th><th>Serve</th><th>Measure</th><th>Total</th></tr>
+      {% for d in val.daily|reverse %}<tr><td>{{ d.day.strftime('%m/%d') }}</td><td>US${{ '%.2f'|format(d.maintain) }}</td><td>US${{ '%.2f'|format(d.serve) }}</td><td>US${{ '%.2f'|format(d.measure) }}</td><td><strong>US${{ '%.2f'|format(d.total) }}</strong></td></tr>{% endfor %}
+    </table>
+  </details>
+  <div class="grid">
+    <div class="card"><strong>{{ m.total }}</strong> corrections · <span class="muted">{{ '%.1f'|format(m.rate * 100) }}% of the {{ m.machine_claims }} machine-generated claims</span><br>
+      <span class="muted">{{ m.verdicts_reverted }} of {{ m.verdicts_total }} automatic verdicts reverted or overridden</span></div>
+    {% for title, rows in [('By error kind', m.by_type), ('By blamed role', m.by_role), ('By source', m.by_source)] %}
+    <div class="card"><strong>{{ title }}</strong>
+      {% for r in rows %}<div class="row"><span class="mono">{{ r.k }}</span><span class="muted" style="margin-left:auto">{{ r.n }}</span></div>{% else %}<div class="muted">None.</div>{% endfor %}
+    </div>
+    {% endfor %}
+  </div>
+
+  <h2>Conflict and drift detectors</h2>
+  <div class="card"><p class="muted">Whoever accuses is not whoever judges: of each suspicion raised, how many the adjudicator confirmed.</p>
+    <table><tr><th>Detector</th><th>Suspicions</th><th>Judged</th><th>Confirmed</th><th>Precision</th><th>Verdicts reverted by you</th></tr>
+      {% for d in detectors %}<tr><td>{{ d.label }}</td><td>{{ d.total }}</td><td>{{ d.judged }}</td><td>{{ d.confirmed }}</td>
+        <td>{% if d.precision is not none %}{{ '%.0f%%'|format(d.precision * 100) }}
+          <span class="muted">(95% CI: {{ '%.0f'|format(d.low * 100) }}–{{ '%.0f'|format(d.high * 100) }}%{% if d.few %}; few cases, n={{ d.judged }}{% endif %})</span>{% else %}—{% endif %}</td><td>{{ d.reverted }}</td></tr>
+      {% else %}<tr><td colspan="6" class="muted">No suspicion yet.</td></tr>{% endfor %}
+    </table></div>
+
+  <h2>Sweep: latest reviews</h2>
+  <div class="card"><table><tr><th>When</th><th>Entity</th><th>Suspicions</th><th>Investigated</th><th>Conclusion</th><th>Cost</th></tr>
+    {% for r in sweeps %}<tr><td>{{ r.reviewed_at|dt }}</td><td>{{ r.name }} <span class="muted">({{ r.type }})</span></td>
+      <td>{{ r.suspicions }}</td><td class="mono">{{ r.investigated }}</td><td>{% if r.inconclusive %}<strong>Inconclusive:</strong> {{ r.failed|length }} read(s) failed ({{ r.failed[0].failed }}); back in the rotation tomorrow. {% endif %}{{ r.summary or '—' }}</td><td>{{ r.cost_usd|money }}</td></tr>
+    {% else %}<tr><td colspan="6" class="muted">The sweep has not run yet.</td></tr>{% endfor %}
+  </table></div>
+
+  <h2>Golden questions</h2>
+  <div class="card">
+    <p class="muted">Written from the text of the sources (never from what Pythia extracted), by kind, with half <strong>sealed</strong> (it only decides; nothing is tuned by looking at it). The <strong>battery</strong> runs Pythia {{ repeats }} times (mean and range), a <strong>baseline without Pythia</strong> (an LLM with text search over the sources) and checks that the judge fails plausible wrong answers. Prompt or model changes run Pythia only once.</p>
+    <div class="row">
+      <form method="post" action="/action/run-battery"><button class="primary" {{ 'disabled' if not questions }}>Run the full battery</button></form>
+      <form method="post" action="/action/run-golden"><button {{ 'disabled' if not questions }}>Run once (Pythia only)</button></form>
+    </div>
+    {% if battery %}{% set b = battery %}
+    <h3 style="margin:14px 0 6px">Latest battery · {{ b.runs[0].started_at|dt }} {% if not b.done %}<span class="chip warn">in progress</span>{% endif %}</h3>
+    <table><tr><th>Kind</th><th>Questions</th><th>Pythia (mean, range)</th><th>Without Pythia</th><th>Evidence recall</th></tr>
+      {% for k in b.kinds %}<tr {% if k.kind == '_total' %}style="font-weight:600"{% endif %}><td>{{ k.label }}</td><td>{{ k.n }}</td>
+        <td>{% if k.pythia %}{{ '%.0f'|format(100 * k.pythia.mean) }}% <span class="muted">({{ '%.0f'|format(100 * k.pythia.min) }}–{{ '%.0f'|format(100 * k.pythia.max) }}%, {{ k.pythia.n }} run(s))</span>{% else %}—{% endif %}</td>
+        <td>{% if k.baseline %}{{ '%.0f'|format(100 * k.baseline.mean) }}%{% else %}—{% endif %}</td>
+        <td>{% if k.recall %}{{ '%.0f'|format(100 * k.recall.mean) }}%{% else %}<span class="muted">—</span>{% endif %}</td></tr>{% endfor %}
+    </table>
+    <p class="muted" style="margin-top:6px">
+      Judge: {% if b.judge.n %}approved <strong>{{ b.judge.fooled }}</strong> of {{ b.judge.n }} plausible wrong answers{% if b.judge.fooled %} (each one is a judge error){% endif %}{% else %}no check yet{% endif %}.
+      Cost: Pythia US${{ '%.2f'|format(b.costs.pythia) }}{% if b.cost_per_correct %} (US${{ '%.3f'|format(b.cost_per_correct) }} per correct answer){% endif %} · baseline US${{ '%.2f'|format(b.costs.baseline) }}.
+    </p>
+    {% if b.regressions %}<div class="card" style="border-color:var(--bad)"><strong>Regression on the sealed questions</strong> (they passed in all runs of the previous battery):
+      {% for q in b.regressions %}<div>· {{ q.question }} <span class="muted">({{ q.kind }})</span></div>{% endfor %}</div>{% endif %}
+    {% endif %}
+    {% if runs %}{% set r = runs[0] %}
+      <details style="margin-top:8px"><summary>Latest run {{ r.started_at|dt }} ({{ r.arm }}, {{ r.config.reason or 'manual' }}) — {{ r.passed }}/{{ r.total }} {{ '(in progress)' if r.status == 'running' }}</summary>
+      <table>{% for x in results %}<tr><td><span class="chip {{ 'ok' if x.passed else 'bad' }}">{{ 'passed' if x.passed else 'failed' }}</span></td>
+        <td><strong>{{ x.question }}</strong> <span class="muted">{{ x.kind or '' }}{% if x.sealed %} · sealed{% endif %}</span><br><span class="muted">expected: {{ x.expected }}</span><br>{{ x.answer }}<br><span class="muted">{{ x.rationale }}</span></td></tr>{% endfor %}</table>
+      </details>
+    {% endif %}
+    <details style="margin-top:8px"><summary>Registered ({{ questions|length }} active)</summary>
+    <table>{% for q in questions %}<tr><td>{{ q.question }} <span class="muted">{{ q.kind or '' }}{% if q.sealed %} · sealed{% endif %}</span></td><td class="muted">{{ q.expected }}</td>
+      <td><form method="post" action="/action/question/{{ q.id }}/toggle"><button>{{ 'Deactivate' if q.active else 'Activate' }}</button></form></td></tr>{% endfor %}</table>
+    </details>
+    <form method="post" action="/action/question">
+      <label>Question</label><input type="text" name="question" required>
+      <label>Expected answer</label><input type="text" name="expected" required>
+      <button style="margin-top:8px">Add</button>
+    </form>
+  </div>
+
+  <h2>Recent corrections</h2>
+  {% for c in corrections %}
+  <div class="card">
+    <div class="row"><span class="chip {{ 'ok' if c.status == 'applied' else 'warn' }}">{{ c.status }}</span>
+      <span>{{ c.text }}</span><span class="muted" style="margin-left:auto">{{ c.created_at|dt }} · {{ c.via }}</span></div>
+    <div class="muted">target {{ c.target_id or '—' }} · error {{ c.error_type or '?' }} · role {{ c.blamed_role or '?' }}{% if c.result %} · {{ c.result }}{% endif %}</div>
+    <details><summary>Turn into a golden question</summary>
+      <form method="post" action="/action/question">
+        <input type="hidden" name="correction" value="{{ c.id }}">
+        <label>Question</label><input type="text" name="question" required>
+        <label>Expected answer</label><input type="text" name="expected" value="{{ c.text }}" required>
+        <button style="margin-top:8px">Create</button>
+      </form>
+    </details>
+  </div>
+  {% else %}<div class="card muted">No correction yet.</div>{% endfor %}
+</main>
+{% endblock %}

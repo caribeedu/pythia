@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 360" width="1200" height="360" role="img" aria-label="Pythia — a personal knowledge oracle">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#141412"/>
+      <stop offset="1" stop-color="#2a2825"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#e0a43a" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#e0a43a" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1200" height="360" fill="url(#bg)"/>
+  <!-- knowledge graph, centered on the oracle -->
+  <g transform="translate(900 180)">
+    <circle r="150" fill="url(#glow)"/>
+    <g stroke="#c07a2c" stroke-opacity="0.55" stroke-width="1.5" fill="none">
+      <line x1="0" y1="0" x2="-130" y2="-70"/>
+      <line x1="0" y1="0" x2="-110" y2="80"/>
+      <line x1="0" y1="0" x2="60" y2="-120"/>
+      <line x1="0" y1="0" x2="140" y2="-20"/>
+      <line x1="0" y1="0" x2="90" y2="100"/>
+      <line x1="-130" y1="-70" x2="-60" y2="-140"/>
+      <line x1="-130" y1="-70" x2="-210" y2="-10"/>
+      <line x1="60" y1="-120" x2="150" y2="-100"/>
+      <line x1="140" y1="-20" x2="210" y2="40"/>
+      <line x1="-110" y1="80" x2="-40" y2="140"/>
+      <line x1="90" y1="100" x2="170" y2="130"/>
+      <path d="M-130 -70 Q -120 10 -110 80" stroke-dasharray="4 5"/>
+    </g>
+    <g fill="#e0a43a">
+      <circle cx="-130" cy="-70" r="9"/>
+      <circle cx="-110" cy="80" r="9"/>
+      <circle cx="60" cy="-120" r="9"/>
+      <circle cx="140" cy="-20" r="9"/>
+      <circle cx="90" cy="100" r="9"/>
+    </g>
+    <g fill="#e0a43a" fill-opacity="0.8">
+      <circle cx="-60" cy="-140" r="5"/>
+      <circle cx="-210" cy="-10" r="5"/>
+      <circle cx="150" cy="-100" r="5"/>
+      <circle cx="210" cy="40" r="5"/>
+      <circle cx="-40" cy="140" r="5"/>
+      <circle cx="170" cy="130" r="5"/>
+    </g>
+    <!-- the oracle: an eye -->
+    <circle r="34" fill="#1d1c1a" stroke="#e0a43a" stroke-width="3"/>
+    <path d="M-20 0 Q 0 -16 20 0 Q 0 16 -20 0 Z" fill="none" stroke="#ecebe8" stroke-width="2.5"/>
+    <circle r="6" fill="#ecebe8"/>
+  </g>
+  <!-- text -->
+  <text x="70" y="170" font-family="Georgia, 'Times New Roman', serif" font-size="92" font-weight="700" fill="#ecebe8" letter-spacing="2">Pythia</text>
+  <text x="74" y="220" font-family="'Segoe UI', Helvetica, Arial, sans-serif" font-size="26" fill="#e0a43a">A personal knowledge oracle</text>
+  <text x="74" y="268" font-family="'Segoe UI', Helvetica, Arial, sans-serif" font-size="18" fill="#9c9891">Every AI understands your surroundings.</text>
+</svg>

@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pythia · {% block title %}{% endblock %}</title>
+  <link rel="stylesheet" href="/static/style.css?v={{ version }}">
+</head>
+<body>
+<header class="top">
+  <span class="brand">Pythia</span>
+  <nav>
+    <a href="/evolution" class="{{ 'on' if active == 'evolution' }}">Evolution</a>
+    <a href="/explore" class="{{ 'on' if active == 'explore' }}">Explore</a>
+    <a href="/sources" class="{{ 'on' if active == 'sources' }}">Sources</a>
+    <a href="/usage" class="{{ 'on' if active == 'usage' }}">Usage</a>
+    <a href="/costs" class="{{ 'on' if active == 'costs' }}">Costs</a>
+    <a href="/quality" class="{{ 'on' if active == 'quality' }}">Quality</a>
+    <a href="/config" class="{{ 'on' if active == 'config' }}">Settings</a>
+  </nav>
+  <span class="status">
+    <span>{{ spend|money }} / US${{ '%.0f'|format(cap) }} this month</span>
+    {% if cognition %}<span class="chip bad">cognition paused</span>{% else %}<span class="chip ok">cognition active</span>{% endif %}
+  </span>
+</header>
+{% if not has_key %}<div class="banner bad">Anthropic API key not configured — nothing is interpreted until you set it in <a href="/config">Settings</a>.</div>{% endif %}
+{% if cognition %}<div class="banner bad">Cognition paused since {{ cognition.paused_since }} — {{ cognition.reason }}. Reads keep serving what has already been concluded.</div>{% endif %}
+{% block body %}{% endblock %}
+</body>
+</html>

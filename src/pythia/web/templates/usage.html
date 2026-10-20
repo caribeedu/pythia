@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Usage{% endblock %}
+{% block body %}
+<main>
+  <h1>Usage</h1>
+  <p class="sub">What was delivered to the LLMs. Only references are stored, with the version of the time: the text is rebuilt from the history, and what was erased at the source shows up as erased.</p>
+
+  <h2>Push</h2>
+  <p class="muted">Injected by the hook at the start of each chat and on every request, grouped by chat.</p>
+  {% for g in chats %}
+  <details class="card" {{ 'open' if loop.first }}>
+    <summary><strong>{{ g.title }}</strong> <span class="muted">· {{ g.pushes|length }} injections · last {{ g.last|dt }}</span></summary>
+    {% for p in g.pushes %}
+    <div style="margin-top:8px">
+      <span class="mono muted">{{ p.ts|dt }} · {{ p.event }} · {{ p.chars }} characters{% if p.cwd %} · {{ p.cwd }}{% endif %}</span>
+      {% if p.skipped %}<span class="chip">not injected: {{ p.skipped }}</span>{% endif %}
+      {% for it in p.entries %}<div style="margin-left:12px"><span class="mono">{{ it.id }}</span> {% if it.gone %}<span class="chip bad">{{ it.label }}</span>{% else %}<span class="muted">{{ it.label }}</span>{% if it.text %}<br>{{ it.text }}{% endif %}{% endif %}</div>{% endfor %}
+    </div>
+    {% endfor %}
+  </details>
+  {% else %}<div class="card muted">No push yet.</div>{% endfor %}
+
+  <h2>Pull</h2>
+  <p class="muted">Each call to the MCP tools, from most recent to oldest. The MCP does not report which chat the call came from; the client and the MCP session appear.</p>
+  {% for c in pulls %}
+  <details class="card">
+    <summary><span class="mono">{{ c.tool }}</span>({{ c.args_text }}) <span class="muted">· {{ c.ts|dt }} · {{ c.entries|length }} references · {{ c.chars }} characters{% if c.client %} · {{ c.client }}{% endif %}{% if c.session %} · session {{ c.session[:8] }}{% endif %}</span>
+      {% if not c.ok %}<span class="chip bad">error: {{ c.error }}</span>{% endif %}</summary>
+    {% for it in c.entries %}<div style="margin-top:6px"><span class="mono">{{ it.id }}</span> {% if it.gone %}<span class="chip bad">{{ it.label }}</span>{% else %}<span class="muted">{{ it.label }}</span>{% if it.text %}<div style="white-space:pre-wrap">{{ it.text }}</div>{% endif %}{% endif %}</div>{% else %}<div class="muted">Nothing returned.</div>{% endfor %}
+  </details>
+  {% else %}<div class="card muted">No call yet.</div>{% endfor %}
+</main>
+{% endblock %}

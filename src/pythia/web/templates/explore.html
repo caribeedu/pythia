@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Explore{% endblock %}
+{% block body %}
+<main class="full">
+  <div class="explore">
+    <div class="canvas">
+      <div class="toolbar">
+        <input type="text" id="q" placeholder="Search person, system, decision…" autocomplete="off">
+        <select id="depth"><option value="1">1 hop</option><option value="2">2 hops</option></select>
+        <button id="home">Owner</button>
+      </div>
+      <div class="results" id="results"></div>
+      <div id="cy"></div>
+      <div class="timebar">
+        <span class="muted">As it was on</span>
+        <div class="timeslider">
+          <input type="range" id="time" min="0" max="1000" value="1000" list="timeticks">
+          <datalist id="timeticks"></datalist>
+          <div class="ticks" id="ticklabels"></div>
+        </div>
+        <span id="timelabel" class="mono">now</span>
+      </div>
+    </div>
+    <aside class="side" id="side"><p class="muted">Click a node to see the page, claims and evidence.</p></aside>
+  </div>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.28.1/cytoscape.min.js"></script>
+<script>
+  window.PYTHIA = {
+    center: {{ center|tojson }},
+    first: {{ (first.isoformat() if first else '')|tojson }},
+    last: {{ (last.isoformat() if last else '')|tojson }}
+  };
+</script>
+<script src="/static/explore.js?v={{ version }}"></script>
+{% endblock %}

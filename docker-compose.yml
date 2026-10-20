@@ -1,0 +1,15 @@
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    container_name: pythia-db
+    environment:
+      POSTGRES_USER: pythia
+      POSTGRES_PASSWORD: pythia
+      POSTGRES_DB: pythia
+    ports:
+      - "127.0.0.1:54329:5432"
+    volumes:
+      - pythia-db:/var/lib/postgresql/data
+    restart: unless-stopped
+volumes:
+  pythia-db:

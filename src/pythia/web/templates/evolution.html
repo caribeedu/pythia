@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+{% block title %}Evolution{% endblock %}
+{% block body %}
+<main>
+  <h1>Evolution</h1>
+  <p class="sub">What changed in the knowledge and why, from most recent to oldest. One line per cause: a source item, a judgment, a correction by you, the sweep. Built from the log, with no LLM summary.</p>
+
+  <form class="filters" method="get" action="/evolution" id="filters">
+    <select name="source" onchange="this.form.submit()">
+      <option value="">All sources</option>
+      {% for s in sources %}<option value="{{ s.id }}" {{ 'selected' if args.source == s.id }}>{{ s.kind }} · {{ s.name }}</option>{% endfor %}
+    </select>
+    <input type="text" id="ent-search" list="ent-options" placeholder="Entity (name)" value="{{ ent.name if ent else '' }}" style="max-width:260px">
+    <datalist id="ent-options"></datalist>
+    <input type="hidden" name="entity" id="ent-id" value="{{ args.entity }}">
+    <label><input type="checkbox" name="verdicts" value="1" {{ 'checked' if args.verdicts }} onchange="this.form.submit()"> Verdicts only</label>
+    <label><input type="checkbox" id="hide" {{ '' if args.no_effect else 'checked' }} onchange="toggleNoop(this)"> Hide no effect</label>
+    <input type="hidden" name="no_effect" id="no-effect" value="{{ args.no_effect }}">
+    {% if args.source or args.entity or args.verdicts %}<a href="/evolution{{ '?no_effect=1' if args.no_effect else '' }}">clear filters</a>{% endif %}
+  </form>
+
+  {% if updating.n or open_tensions %}
+  <div class="card muted">
+    {% if updating.n %}<span class="chip warn">updating</span> {{ updating.n }} page(s) with a pending regeneration, the oldest since {{ updating.since|dt }}. {% endif %}
+    {% if open_tensions %}<span class="chip">under judgment</span> {{ open_tensions }} open tension(s).{% endif %}
+  </div>
+  {% endif %}
+
+  {% if ent %}
+  <h2>Trajectory of {{ ent.name }} <span class="muted">({{ ent.type }})</span> · <a href="/explore?id={{ ent.id }}">open in Explore</a></h2>
+  {% for a in trajectory %}
+  <details class="card evo" {{ 'open' if loop.index <= 3 }}>
+    <summary><span class="mono">{{ a.predicate }}</span> <span class="muted">· {{ a.claims|length }} claim(s)</span></summary>
+    {% for c in a.claims %}
+    <div class="item">
+      <span class="tag">{{ c.recorded_at|dt }}</span>
+      <span class="{{ 'before' if c.status in ('superseded', 'retracted') }}">{{ c.statement }}</span>
+      <span class="chip {{ 'ok' if c.status == 'current' else ('warn' if c.status == 'disputed' else '') }}">{{ c.status }}</span>
+      {% if c.origin == 'human' %}<span class="chip accent">your correction</span>{% endif %}
+      {% for h in c.history %}{% if h.verdict %}<div class="muted" style="font-size:12px">{{ h.ts|dt }} → {{ h.status }} ({{ h.kind|replace('_', ' ') }}){% if h.by %} · superseded by: {{ h.by_text or h.by }}{% endif %}</div>{% endif %}{% endfor %}
+    </div>
+    {% endfor %}
+  </details>
+  {% else %}<div class="card muted">No attribute with a history (all claims still current and unique).</div>{% endfor %}
+  <h2>Changes that touched {{ ent.name }}</h2>
+  {% endif %}
+
+  {% for ln in data.lines %}
+  {% if ln.type == 'events' %}
+  <details class="card evo">
+    <summary class="row">
+      <span class="when">{{ ln.ts|dt }}</span>
+      <span class="chip {{ 'accent' if ln.kind == 'your correction' else ('warn' if ln.kind == 'judgment' else '') }}">{{ ln.kind }}</span>
+      <strong>{{ ln.title }}</strong>
+      <span class="muted">{{ ln.detail|friendly(data.names) }}</span>
+      <span class="counts" style="margin-left:auto">{% for label, n in ln.counts %}{{ n }} {{ label }}{{ ' · ' if not loop.last }}{% endfor %}</span>
+    </summary>
+    {% for it in ln['items'] %}
+    <div class="item">
+      <span class="tag">{{ it.t }}</span>
+      {% if it.t == 'verdict' %}
+        <span class="chip {{ 'bad' if it.kind == 'real_conflict' else ('warn' if it.kind == 'outdated_source' else 'accent') }}">{{ (it.kind or '')|replace('_', ' ') }}</span>
+        {{ it.text|friendly(data.names) }}
+        {% if it.status and it.status != 'applied' %}<span class="chip warn">{{ 'reverted' if it.status == 'reverted' else it.status }}</span>{% endif %}
+        {% for ch in it.changes %}
+          <div style="font-size:13px; margin-top:2px">
+            {% if ch['from'] == ch.to %}<span class="muted">kept ({{ ch.to }}):</span>{% else %}{{ ch['from'] }} → <strong>{{ ch.to }}</strong>:{% endif %}
+            {% if ch.after %}<span class="before">{{ ch.before }}</span> → {{ ch.after }}{% else %}{{ ch.before }}{% endif %}
+            <a class="muted" style="font-size:12px" href="/explore?id={{ ch.id }}" title="{{ ch.id }}">open</a>
+          </div>
+        {% endfor %}
+        {% if it.revertible %}<form method="post" action="/action/revert/{{ it.id }}" style="margin-top:4px"><button class="danger">Revert</button></form>{% endif %}
+      {% elif it.t == 'status' or it.t == 'validity' %}
+        {{ it.text }} → <strong>{{ it.to }}</strong>{% if it.why %} <span class="muted">({{ it.why|friendly(data.names) }})</span>{% endif %}
+      {% elif it.t == 'tension' %}
+        {{ it.text|friendly(data.names) }}{% for c in it.claims %}<div class="muted" style="font-size:12px">· {{ c }}</div>{% endfor %}
+      {% elif it.entity_id %}
+        {{ it.text }}{% if it.why %} <span class="muted">({{ it.why|friendly(data.names) }})</span>{% endif %} <a class="muted" style="font-size:12px" href="/evolution?entity={{ it.entity_id }}">trajectory</a>
+      {% elif it.t == 'new' and it.subject_id %}
+        {{ it.text }} <a class="muted" style="font-size:12px" href="/evolution?entity={{ it.subject_id }}">trajectory</a>
+      {% else %}
+        {{ it.text }}
+      {% endif %}
+    </div>
+    {% endfor %}
+    {% if ln.more %}<div class="muted">… and {{ ln.more }} more.</div>{% endif %}
+  </details>
+  {% elif ln.type == 'page' %}
+  <details class="card evo" data-diff="/evolution/diff/{{ ln.view_id }}/{{ ln.version }}">
+    <summary class="row">
+      <span class="when">{{ ln.ts|dt }}</span>
+      <span class="chip">{{ 'narrative' if ln.page_kind == 'narrative' else 'page' }}</span>
+      <strong>{{ ln.title }}</strong> <span class="muted">version {{ ln.version }}{% if ln.status == 'retired' %} · retired{% endif %}</span>
+      {% if ln.updating_since %}<span class="chip warn">updating since {{ ln.updating_since|dt }}</span>{% endif %}
+      <span class="counts" style="margin-left:auto">see what changed in the text</span>
+    </summary>
+    <div class="diff-body muted">loading…</div>
+  </details>
+  {% elif ln.type == 'pages' %}
+  <details class="card evo">
+    <summary class="row"><span class="when">{{ ln.ts|dt }}</span><span class="chip">{{ ln.kind }}</span><strong>{{ ln.title }}</strong> <span class="muted">{{ ln.detail }}</span>
+      {% if ln.updating %}<span class="chip warn">{{ ln.updating }} updating</span>{% endif %}</summary>
+    {% for p in ln.pages[:200] %}
+    <details class="item" data-diff="/evolution/diff/{{ p.view_id }}/{{ p.version }}">
+      <summary>{{ 'narrative' if p.page_kind == 'narrative' else 'page' }} · <a href="/explore?id={{ p.view_id }}">{{ p.title }}</a>
+        <span class="muted">version {{ p.version }}{% if p.status == 'retired' %} · retired{% endif %}</span>
+        {% if p.updating_since %}<span class="chip warn">updating since {{ p.updating_since|dt }}</span>{% endif %}</summary>
+      <div class="diff-body muted">loading…</div>
+    </details>
+    {% endfor %}
+    {% if ln.pages|length > 200 %}<div class="muted">… and {{ ln.pages|length - 200 }} more.</div>{% endif %}
+  </details>
+  {% elif ln.type == 'no_effect' %}
+  <div class="card evo quiet row">
+    <span class="when">{{ ln.ts|dt }}</span>
+    <span class="chip {{ 'bad' if ln.failed else '' }}">{{ 'failed' if ln.failed else 'no effect' }}</span>
+    <span>{{ ln.title }}</span> <span class="muted">{{ ln.detail }} · {{ ln.why }}</span>
+  </div>
+  {% endif %}
+  {% else %}
+  <div class="card muted">Nothing changed in this window (from {{ data.window_since|dt }} on).</div>
+  {% endfor %}
+
+  <div class="row" style="margin-top:8px">
+    <a class="btn" href="/evolution?before={{ data.next_before.isoformat() }}&source={{ args.source }}&entity={{ args.entity }}&no_effect={{ args.no_effect }}&verdicts={{ args.verdicts }}">Older</a>
+    <span class="muted">until {{ data.next_before|dt }}</span>
+  </div>
+</main>
+<script>
+  function toggleNoop(box) {
+    document.getElementById('no-effect').value = box.checked ? 0 : 1;
+    document.getElementById('filters').submit();
+  }
+  // The L1 diff is loaded only when the line is opened.
+  document.querySelectorAll('details[data-diff]').forEach(d => d.addEventListener('toggle', async () => {
+    const body = d.querySelector('.diff-body');
+    if (!d.open || body.dataset.done) return;
+    body.innerHTML = await (await fetch(d.dataset.diff)).text();
+    body.classList.remove('muted');
+    body.dataset.done = 1;
+  }));
+  // Entity filter: search by name, store the ID.
+  const search = document.getElementById('ent-search'), options = document.getElementById('ent-options');
+  let found = [];
+  search.addEventListener('input', async () => {
+    const hit = found.find(e => `${e.name} (${e.type})` === search.value);
+    if (hit) { document.getElementById('ent-id').value = hit.id; document.getElementById('filters').submit(); return; }
+    if (search.value.length < 2) return;
+    found = await (await fetch('/api/entities?q=' + encodeURIComponent(search.value))).json();
+    options.innerHTML = found.map(e => `<option value="${e.name} (${e.type})">`).join('');
+  });
+</script>
+{% endblock %}

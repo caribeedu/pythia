@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Validate the judge{% endblock %}
+{% block body %}
+<main>
+  <h1>Validate the re-explanation judge</h1>
+  <p class="sub">For each of your messages, say whether it repeats something Pythia already knew (the claims below are what it had before the conversation). There is no "right" answer: your reading is what calibrates the judge. The order does not reveal what the judge decided.</p>
+  <div class="card">{% if agr.n %}Agreement with the judge so far: <strong>{{ '%.0f'|format(100 * agr.agree) }}%</strong> over {{ agr.n }} messages{% if agr.kappa is not none %} · kappa {{ '%.2f'|format(agr.kappa) }}{% endif %}{% if agr.n < 30 %} <span class="muted">(goal: 30)</span>{% endif %}{% else %}None labeled yet (goal: 30).{% endif %}</div>
+  {% for it in items %}
+  <div class="card">
+    <div class="muted">{{ it.ts|dt }} · {{ it.chat_title or 'untitled chat' }}</div>
+    <div style="white-space:pre-wrap; margin:6px 0">{{ it.text[:1500] }}{% if it.text|length > 1500 %}…{% endif %}</div>
+    <details open><summary>What Pythia already knew (candidates)</summary>
+      {% for c in it.candidates %}<div class="muted" style="font-size:13px">· [{{ c.subject or '?' }}] {{ c.statement }}</div>{% else %}<div class="muted">no candidate</div>{% endfor %}
+    </details>
+    <form method="post" action="/action/label/{{ it.message_id }}" class="row" style="margin-top:6px">
+      <button name="repeats" value="yes">Repeats something it already knew</button>
+      <button name="repeats" value="no">Does not repeat</button>
+    </form>
+  </div>
+  {% else %}<div class="card muted">Nothing to label: run the re-explanation measurement on the Quality tab, or you have already labeled the sample.</div>{% endfor %}
+</main>
+{% endblock %}

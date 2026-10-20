@@ -1,0 +1,231 @@
+{% extends "base.html" %}
+{% block title %}Settings{% endblock %}
+{% block body %}
+<main>
+  <h1>Settings</h1>
+  {% if saved %}<div class="card"><span class="chip ok">saved</span></div>{% endif %}
+  <form method="post" action="/action/config">
+    <div class="card">
+      <strong>Anthropic API key</strong> <span class="chip {{ 'ok' if has_key else 'bad' }}">{{ 'configured' if has_key else 'missing' }}</span>
+      <label>New key (stored in the macOS Keychain; leave empty to keep)</label>
+      <input type="password" name="api_key" autocomplete="off">
+      <label>API endpoint</label><input type="text" name="base_url" value="{{ base_url }}">
+    </div>
+
+    <div class="card">
+      <strong>Models per role</strong>
+      <table><tr><th>Role</th><th>Model</th><th>Effort (ignored on Haiku)</th></tr>
+        {% for role, spec in roles.items() %}
+        <tr><td>{{ spec.label }} <span class="mono muted">{{ role }}</span></td>
+          <td><select name="model_{{ role }}">{% for m in model_options %}<option {{ 'selected' if models[role] == m }}>{{ m }}</option>{% endfor %}</select></td>
+          <td><select name="effort_{{ role }}">{% for e in efforts %}<option {{ 'selected' if effort[role] == e }}>{{ e }}</option>{% endfor %}</select></td></tr>
+        {% endfor %}
+      </table>
+      <label>Monthly cap (US$)</label><input type="number" step="0.01" name="cap" value="{{ cap }}">
+      <label>Prices per million tokens (JSON)</label><textarea name="prices" rows="10">{{ prices }}</textarea>
+    </div>
+
+    <div class="card">
+      <strong>Owner</strong>
+      <label>Name</label><input type="text" name="owner_name" value="{{ owner.name }}">
+      <label>Aliases (comma-separated)</label><input type="text" name="aliases" value="{{ owner.aliases|join(', ') }}">
+      <label>Authority policy (guidance for integration and adjudication)</label>
+      <textarea name="policy" rows="10">{{ policy }}</textarea>
+    </div>
+
+    <div class="card">
+      <strong>Claude Code sessions</strong>
+      <label>Projects directory</label><input type="text" name="projects_root" value="{{ cc.projects_root }}">
+      <label>Debounce (minutes without change to be considered settled)</label><input type="number" step="0.5" name="debounce" value="{{ cc.debounce_minutes }}">
+      <label><input type="checkbox" name="sidechains" {{ 'checked' if cc.include_sidechains }}> Include subagents (sidechains)</label>
+    </div>
+
+    <div class="card">
+      <strong>GitHub</strong> <span class="chip {{ 'ok' if has_gh_token else 'bad' }}">{{ 'token configured' if has_gh_token else 'no token' }}</span>
+      <label>Token type</label>
+      <select name="gh_token_type" id="gh_token_type">
+        <option value="classic" {{ 'selected' if (gh.token_type or 'classic') == 'classic' }}>Classic (recommended: changing the allowlist needs no new approval)</option>
+        <option value="fine_grained" {{ 'selected' if gh.token_type == 'fine_grained' }}>Fine-grained (per-repository permissions)</option>
+      </select>
+      <div class="muted gh-help" data-type="classic" style="margin:8px 0">
+        <strong>How to create it:</strong> GitHub → Settings → Developer settings → Personal access tokens → <em>Tokens (classic)</em> → Generate new token (classic).
+        <ul style="margin:4px 0 0 18px">
+          <li><strong>Scope:</strong> check only <span class="mono">repo</span>. GitHub has no read-only scope for private repositories; Pythia only does reads (GET).</li>
+          <li><strong>Organization SSO:</strong> if the organization uses SAML SSO, after creating the token click <em>Configure SSO</em> → <em>Authorize</em> on the organization (e.g. acme-corp). It is a one-time step; changing allowlisted repositories later needs no new approval.</li>
+          <li><strong>Expiry:</strong> choose an expiration; when it expires, Pythia shows the error in Sources and you paste a new one here.</li>
+        </ul>
+      </div>
+      <div class="muted gh-help" data-type="fine_grained" style="margin:8px 0">
+        <strong>How to create it:</strong> GitHub → Settings → Developer settings → Personal access tokens → <em>Fine-grained tokens</em>.
+        <ul style="margin:4px 0 0 18px">
+          <li><strong>Resource owner:</strong> the repositories' organization (e.g. acme-corp). If the organization requires approval, the token only works after it is approved — and again at every change of repositories.</li>
+          <li><strong>Repository access:</strong> only the allowlisted repositories.</li>
+          <li><strong>Repository permissions</strong> (all <em>Read-only</em>): <span class="mono">Pull requests</span>, <span class="mono">Issues</span> and <span class="mono">Metadata</span>.</li>
+        </ul>
+      </div>
+      <script>
+        (() => {
+          const sel = document.getElementById("gh_token_type");
+          const sync = () => document.querySelectorAll(".gh-help").forEach(el => { el.style.display = el.dataset.type === sel.value ? "" : "none"; });
+          sel.addEventListener("change", sync); sync();
+        })();
+      </script>
+      <label>Token (stored in the Keychain; leave empty to keep)</label>
+      <input type="password" name="gh_token" autocomplete="off">
+      <label>Your GitHub login (empty = discover through the API)</label><input type="text" name="gh_login" value="{{ gh.owner_login }}">
+      <div class="row">
+        <div style="flex:1"><label>Interval (min)</label><input type="number" step="1" name="gh_poll" value="{{ gh.poll_minutes }}"></div>
+        <div style="flex:1"><label>Backfill (days)</label><input type="number" name="gh_horizon" value="{{ gh.horizon_days }}"></div>
+        <div style="flex:1"><label>Open PR idle for (days)</label><input type="number" name="gh_stale" value="{{ gh.stale_days }}"></div>
+      </div>
+      <label>Authors (humans) you do not want to read — comma-separated</label><input type="text" name="gh_exclude" value="{{ gh.exclude_authors|join(', ') }}">
+      <label>Paths you do not want to read (glob, e.g. poetry.lock, *_pb2.py) — comma-separated</label><input type="text" name="gh_exclude_paths" value="{{ gh.exclude_paths|join(', ') }}">
+      <label>Bots you want to read (by default every bot flagged by GitHub is ignored, along with the whole thread) — comma-separated</label><input type="text" name="gh_read_bots" value="{{ gh.read_bots|join(', ') }}">
+      <p class="muted">Changing these lists retracts what fell outside and re-reads what holds again.</p>
+    </div>
+
+    <div class="card">
+      <strong>Slack</strong> <span class="chip {{ 'ok' if has_slack_token else 'bad' }}">{{ 'token configured' if has_slack_token else 'no token' }}</span>
+      <div class="muted" style="margin:8px 0">
+        <strong>Which token to use:</strong> the <em>User OAuth Token</em> (starts with <span class="mono">xoxp-</span>) of the Slack app already approved by the admin — at api.slack.com/apps → your app → <em>OAuth &amp; Permissions</em>. Pythia reads as you, with no bot.
+        <ul style="margin:4px 0 0 18px">
+          <li><strong>User Token Scopes</strong> (read-only): <span class="mono">users:read</span> and, for each kind of conversation you want to read,
+            public channels <span class="mono">channels:read</span> + <span class="mono">channels:history</span>;
+            private <span class="mono">groups:read</span> + <span class="mono">groups:history</span>;
+            DMs <span class="mono">im:read</span> + <span class="mono">im:history</span>;
+            groups <span class="mono">mpim:read</span> + <span class="mono">mpim:history</span>.</li>
+          <li>No write scope. If any is missing, Sources shows which.</li>
+        </ul>
+      </div>
+      <label>Token (stored in the Keychain; leave empty to keep)</label>
+      <input type="password" name="slack_token" autocomplete="off">
+      <div class="row">
+        <div style="flex:1"><label>Interval (min)</label><input type="number" step="1" name="sl_poll" value="{{ sl.poll_minutes }}"></div>
+        <div style="flex:1"><label>Settled after (min idle)</label><input type="number" step="1" name="sl_settle" value="{{ sl.settle_minutes }}"></div>
+        <div style="flex:1"><label>Backfill (days)</label><input type="number" name="sl_horizon" value="{{ sl.horizon_days }}"></div>
+        <div style="flex:1"><label>Edit revision (days)</label><input type="number" name="sl_revision" value="{{ sl.revision_days }}"></div>
+        <div style="flex:1"><label>Max window (h)</label><input type="number" step="0.5" name="sl_window_max" value="{{ sl.window_max_hours }}"></div>
+        <div style="flex:1"><label>Watch threads (days)</label><input type="number" name="sl_watch" value="{{ sl.thread_watch_days }}"></div>
+      </div>
+      <p class="muted">On every read, the last revision days are re-read in full: an edit retracts the previous version and a deleted message is deleted here too. Edits older than that are not seen; new replies on old threads are seen as long as the thread had a reply within the watch days.</p>
+      <label>People you do not want to read (name, login or Slack ID) — comma-separated</label><input type="text" name="sl_exclude" value="{{ sl.exclude_authors|join(', ') }}">
+      <label>Bots you want to read (by default every bot flagged by Slack is ignored, along with the whole thread it opens) — comma-separated</label><input type="text" name="sl_read_bots" value="{{ sl.read_bots|join(', ') }}">
+      <label>System messages you do not want to read (Slack subtype) — comma-separated</label><input type="text" name="sl_subtypes" value="{{ sl.ignore_subtypes|join(', ') }}">
+      <p class="muted">Changing these lists retracts what fell outside and re-reads what holds again.</p>
+    </div>
+
+    <div class="card">
+      <strong>Confluence</strong> <span class="chip {{ 'ok' if has_cf_token else 'bad' }}">{{ 'token configured' if has_cf_token else 'no token' }}</span>
+      <div class="row">
+        <div style="flex:1"><label>Site</label><input type="text" name="cf_site" value="{{ cf.site }}" placeholder="company.atlassian.net"></div>
+        <div style="flex:1"><label>Your Atlassian account email</label><input type="text" name="cf_email" value="{{ cf.email }}"></div>
+      </div>
+      <label>Token type</label>
+      <select name="cf_token_type" id="cf_token_type">
+        <option value="scoped" {{ 'selected' if (cf.token_type or 'scoped') == 'scoped' }}>Scoped (recommended: read-only)</option>
+        <option value="classic" {{ 'selected' if cf.token_type == 'classic' }}>Classic (everything your account can do)</option>
+      </select>
+      <div class="muted cf-help" data-type="scoped" style="margin:8px 0">
+        <strong>How to create it:</strong> id.atlassian.com → Security → <em>Create and manage API tokens</em> → <em>Create API token with scopes</em>.
+        <ul style="margin:4px 0 0 18px">
+          <li><strong>App:</strong> Confluence. <strong>Scopes</strong> (all read): {% for sc in cf_scopes %}<span class="mono">{{ sc }}</span>{{ ', ' if not loop.last }}{% endfor %}.</li>
+          <li>The scope covers all of Confluence: changing spaces and trees on the allowlist needs no new token. When it expires, Sources shows the error.</li>
+        </ul>
+      </div>
+      <div class="muted cf-help" data-type="classic" style="margin:8px 0">
+        <strong>How to create it:</strong> id.atlassian.com → Security → <em>Create and manage API tokens</em> → <em>Create API token</em>. It can do everything your account can; Pythia only reads.
+      </div>
+      <script>
+        (() => { const sel = document.getElementById("cf_token_type");
+          const sync = () => document.querySelectorAll(".cf-help").forEach(el => { el.style.display = el.dataset.type === sel.value ? "" : "none"; });
+          sel.addEventListener("change", sync); sync(); })();
+      </script>
+      <label>Token (stored in the Keychain; leave empty to keep)</label>
+      <input type="password" name="cf_token" autocomplete="off">
+      <div class="row">
+        <div style="flex:1"><label>Interval (min)</label><input type="number" name="cf_poll" value="{{ cf.poll_minutes }}"></div>
+        <div style="flex:1"><label>Version settled after (min idle)</label><input type="number" name="cf_settle" value="{{ cf.settle_minutes }}"></div>
+        <div style="flex:1"><label>Comments re-read every (h)</label><input type="number" name="cf_comments" value="{{ cf.comment_revision_hours }}"></div>
+      </div>
+      <p class="muted">A page edit does not erase what came from the previous version: it stays as history, and the adjudicator decides whether each claim still holds, evolved or was wrong. A page deleted in Confluence disappears from here too.</p>
+      <label>People whose comments you do not want to read (name or account ID) — comma-separated</label>
+      <input type="text" name="cf_exclude" value="{{ cf.exclude_authors|join(', ') }}">
+    </div>
+
+    <div class="card">
+      <strong>Narratives</strong>
+      <label>Pass frequency (it runs after the first change and gathers everything that changed in the meantime)</label>
+      <select name="nar_passes">
+        {% for v, label in nar_options %}<option value="{{ v }}" {{ 'selected' if (nar.passes_per_hour|float) == v }}>{{ label }}</option>{% endfor %}
+      </select>
+      <p class="muted">The narrative pass is the most expensive synthesis (only the affected narratives go in full). Fewer passes = slightly more outdated narratives and less spend; meanwhile, Evolution shows the page as "updating". Today: {{ nar_today.n }} pass(es), US${{ '%.2f'|format(nar_today.usd|float) }}.</p>
+    </div>
+
+    <div class="card">
+      <strong>Drift sweep</strong>
+      <label><input type="checkbox" name="sw_enabled" {{ 'checked' if sw.enabled }}> Active</label>
+      <label>Budget per day (US$) — runs only with the queue empty; what is left over does not accumulate</label>
+      <input type="number" step="0.05" name="sw_budget" value="{{ sw.daily_budget_usd }}">
+      <p class="muted">The sweep reviews entities in rotation (what has gone longest without review, the most consulted, and documentation with newer activity in another source), reading GitHub and Confluence live. It only accuses: the adjudicator decides. Today: US${{ '%.2f'|format(sw_spent) }} spent.</p>
+    </div>
+
+    <div class="card">
+      <strong>incident.io catalog</strong> <span class="chip {{ 'ok' if has_inc_key else 'bad' }}">{{ 'key configured' if has_inc_key else 'no key' }}</span>
+      <div class="muted" style="margin:8px 0">
+        <strong>Which key to create:</strong> an <em>API key</em> at incident.io → Settings → API keys.
+        <ul style="margin:4px 0 0 18px">
+          <li><strong>Permissions:</strong> catalog read only — <span class="mono">View catalog types</span> (<span class="mono">catalog_types.view</span>) and <span class="mono">View catalog entries</span> (<span class="mono">catalog_entries.view</span>).</li>
+          <li>No write, incident, alert or on-call permission.</li>
+        </ul>
+      </div>
+      <label>API key (stored in the Keychain; leave empty to keep)</label><input type="password" name="inc_key" autocomplete="off">
+      <label>Sync interval (min)</label><input type="number" name="inc_poll" value="{{ inc.poll_minutes }}">
+      <label>Attributes you do not want to read — "Attribute" (any type) or "Type: Attribute", comma-separated</label>
+      <input type="text" name="inc_exclude" value="{{ inc.exclude_attributes|join(', ') }}">
+      <p class="muted">Changing this list re-reads the catalog: what went away is retracted, and what stays the same does not go through the LLM again.</p>
+      <label>Catalog types → entity type (empty = not synced)</label>
+      <table>{% for t, e in inc.types.items() %}<tr><td class="mono">{{ t }}</td>
+        <td><select name="inc_type_{{ loop.index0 }}"><option value="">(do not sync)</option>
+          {% for et in ['person','team','system','repository','project','organization','concept','other'] %}<option {{ 'selected' if e == et }}>{{ et }}</option>{% endfor %}
+        </select></td></tr>{% endfor %}</table>
+    </div>
+
+    <div class="card">
+      <strong>Push (briefing by hook)</strong>
+      <label><input type="checkbox" name="push_enabled" {{ 'checked' if push.enabled }}> Active</label>
+      <label>Maximum characters per briefing</label><input type="number" name="push_max" value="{{ push.max_chars }}">
+      <label><input type="checkbox" name="rules_enabled" {{ 'checked' if push.rules_enabled }}> Pythia usage rules at the start of each conversation</label>
+      <textarea name="rules" style="min-height:150px">{{ push.rules }}</textarea>
+      <p class="muted">They tell the AI <strong>when</strong> to use Pythia (the "how" is in the MCP tool descriptions). They go at the start of each conversation and after /clear or compaction. Keep them short: too many rules make agents worse. <span class="mono">{owner}</span> becomes your name.</p>
+    </div>
+    <button class="primary">Save</button>
+  </form>
+
+  <h2 id="team">Your team</h2>
+  <div class="card">
+    <p class="muted">Used in the repositories' "you or your team" mode. This list is the truth; importing from the catalog only copies, it never syncs by itself.</p>
+    <form method="post" action="/action/team">
+      <input type="hidden" name="rows" value="{{ team|length }}">
+      <table><tr><th>Name</th><th>Email</th><th>Slack</th><th>GitHub</th><th>Jira</th><th>Zoom</th><th>Remove</th></tr>
+        {% for m in team %}{% set i = loop.index0 %}<tr>
+          {% for k in ['name','email','slack','github','jira','zoom'] %}<td><input type="text" name="{{ k }}_{{ i }}" value="{{ m[k] or '' }}"></td>{% endfor %}
+          <td><input type="checkbox" name="remove_{{ i }}"></td></tr>{% endfor %}
+        <tr>{% for k in ['name','email','slack','github','jira','zoom'] %}<td><input type="text" name="{{ k }}_{{ team|length }}" placeholder="{{ 'new person' if k == 'name' }}"></td>{% endfor %}<td></td></tr>
+      </table>
+      <button class="primary">Save team</button>
+    </form>
+    {% if catalog_teams %}<form method="post" action="/action/team/import" class="row" style="margin-top:8px">
+      <select name="team_entity_id">{% for t in catalog_teams %}<option value="{{ t.id }}">{{ t.name }}</option>{% endfor %}</select>
+      <button>Import members from the catalog</button></form>
+    {% else %}<p class="muted">Import becomes available once the incident.io catalog is synced.</p>{% endif %}
+  </div>
+
+  <h2>Claude Code integration</h2>
+  <div class="card">
+    <p>MCP (pull) — run once in the terminal:</p>
+    <pre>claude mcp add --scope user --transport http pythia http://127.0.0.1:{{ port }}/mcp/</pre>
+    <p>Hooks (push) — add to <span class="mono">~/.claude/settings.json</span>:</p>
+    <pre>{{ hooks }}</pre>
+  </div>
+</main>
+{% endblock %}

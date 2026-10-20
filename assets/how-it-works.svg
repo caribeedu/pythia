@@ -1,0 +1,120 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 580" width="1200" height="580" role="img" aria-label="How Pythia works: sources become evidence, mentions, entities and claims; conflicts become tensions and verdicts; claims feed pages, narratives and the map that serve the push hook and the MCP tools">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#c07a2c"/>
+    </marker>
+    <marker id="arrow-dim" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#9c9891"/>
+    </marker>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#141412"/>
+      <stop offset="1" stop-color="#232220"/>
+    </linearGradient>
+  </defs>
+  <style>
+    text { font-family: 'Segoe UI', -apple-system, Helvetica, Arial, sans-serif; }
+    .title { font-size: 17px; font-weight: 650; fill: #ecebe8; }
+    .sub { font-size: 12.5px; fill: #9c9891; }
+    .lane { font-size: 12px; letter-spacing: .12em; text-transform: uppercase; fill: #9c9891; }
+    .truth { fill: #2a2825; stroke: #e0a43a; stroke-width: 2; }
+    .derived { fill: #1d1c1a; stroke: #6b6862; stroke-width: 1.6; stroke-dasharray: 6 5; }
+    .judge { fill: #2a2825; stroke: #c07a2c; stroke-width: 2; }
+    .io { fill: #1d1c1a; stroke: #6b6862; stroke-width: 1.6; }
+    .flow { stroke: #c07a2c; stroke-width: 2; fill: none; marker-end: url(#arrow); }
+    .flow-dim { stroke: #9c9891; stroke-width: 1.6; fill: none; stroke-dasharray: 5 5; marker-end: url(#arrow-dim); }
+    .note { font-size: 12px; fill: #e0a43a; font-style: italic; }
+  </style>
+  <rect width="1200" height="580" rx="14" fill="url(#bg)"/>
+
+  <!-- lane labels -->
+  <text x="40" y="38" class="lane">Sources</text>
+  <text x="270" y="38" class="lane">Understanding</text>
+  <text x="960" y="38" class="lane">Judgment</text>
+  <text x="270" y="388" class="lane">Derivatives</text>
+  <text x="960" y="388" class="lane">Delivery</text>
+
+  <!-- sources -->
+  <rect x="40" y="56" width="190" height="236" rx="12" class="io"/>
+  <text x="62" y="92" class="title">Your sources</text>
+  <text x="62" y="124" class="sub">Claude Code chats</text>
+  <text x="62" y="152" class="sub">GitHub pull requests</text>
+  <text x="62" y="180" class="sub">Slack threads and DMs</text>
+  <text x="62" y="208" class="sub">Confluence pages</text>
+  <text x="62" y="236" class="sub">incident.io catalog</text>
+  <text x="62" y="268" class="note">Edits and deletions follow</text>
+
+  <!-- row 1: evidence, mention, entity -->
+  <rect x="290" y="76" width="190" height="76" rx="12" class="truth"/>
+  <text x="312" y="108" class="title">Evidence</text>
+  <text x="312" y="132" class="sub">Original excerpt, erasable</text>
+
+  <rect x="540" y="76" width="190" height="76" rx="12" class="truth"/>
+  <text x="562" y="108" class="title">Mention</text>
+  <text x="562" y="132" class="sub">A name in context</text>
+
+  <rect x="790" y="76" width="190" height="76" rx="12" class="truth"/>
+  <text x="812" y="108" class="title">Entity</text>
+  <text x="812" y="132" class="sub">Anchored or discovered</text>
+
+  <!-- row 2: claim, tension, verdict -->
+  <rect x="540" y="226" width="190" height="86" rx="12" class="truth" stroke-width="3"/>
+  <text x="562" y="260" class="title">Claim</text>
+  <text x="562" y="284" class="sub">The source of truth:</text>
+  <text x="562" y="302" class="sub">Validity, status, evidence</text>
+
+  <rect x="790" y="226" width="190" height="86" rx="12" class="judge"/>
+  <text x="812" y="260" class="title">Tension</text>
+  <text x="812" y="284" class="sub">Raised by integration</text>
+  <text x="812" y="302" class="sub">Raised by the sweep</text>
+
+  <rect x="1010" y="226" width="150" height="86" rx="12" class="judge"/>
+  <text x="1030" y="260" class="title">Verdict</text>
+  <text x="1030" y="284" class="sub">Recorded</text>
+  <text x="1030" y="302" class="sub">Reversible</text>
+
+  <!-- row 3: derivatives and delivery -->
+  <rect x="290" y="406" width="190" height="86" rx="12" class="derived"/>
+  <text x="312" y="440" class="title">Pages</text>
+  <text x="312" y="464" class="sub">L0 and L1 per entity</text>
+  <text x="312" y="482" class="sub">Cite claim IDs</text>
+
+  <rect x="540" y="406" width="190" height="86" rx="12" class="derived"/>
+  <text x="562" y="440" class="title">Narratives</text>
+  <text x="562" y="464" class="sub">One story per theme</text>
+  <text x="562" y="482" class="sub">Plus the map of L0s</text>
+
+  <rect x="790" y="406" width="190" height="38" rx="10" class="io"/>
+  <text x="812" y="431" class="title" style="font-size:15px">Push · hook briefing</text>
+  <rect x="790" y="454" width="190" height="38" rx="10" class="io"/>
+  <text x="812" y="479" class="title" style="font-size:15px">Pull · 5 MCP tools</text>
+
+  <rect x="1010" y="406" width="150" height="86" rx="12" class="io"/>
+  <text x="1030" y="440" class="title">Your LLMs</text>
+  <text x="1030" y="464" class="sub">Claude Code</text>
+  <text x="1030" y="482" class="sub">Any MCP client</text>
+
+  <!-- flows -->
+  <path class="flow" d="M230 114 H288"/>
+  <path class="flow" d="M480 114 H538"/>
+  <path class="flow" d="M730 114 H788"/>
+  <path class="flow" d="M635 152 V224"/>
+  <path class="flow" d="M385 152 V269 H538"/>
+  <path class="flow" d="M730 269 H788"/>
+  <path class="flow" d="M980 269 H1008"/>
+  <path class="flow-dim" d="M1085 312 V338 H635 V312"/>
+  <text x="780" y="332" class="note">A verdict supersedes, retracts or disputes claims</text>
+  <path class="flow" d="M585 312 V344 H385 V404"/>
+  <path class="flow" d="M635 312 V404"/>
+  <path class="flow" d="M730 449 H788"/>
+  <path class="flow" d="M980 425 H1008"/>
+  <path class="flow" d="M980 473 H1008"/>
+
+  <!-- footer legend -->
+  <rect x="40" y="540" width="16" height="16" rx="4" class="truth"/>
+  <text x="64" y="553" class="sub">Source of truth</text>
+  <rect x="190" y="540" width="16" height="16" rx="4" class="judge"/>
+  <text x="214" y="553" class="sub">Judgment (LLM adjudicator)</text>
+  <rect x="400" y="540" width="16" height="16" rx="4" class="derived"/>
+  <text x="424" y="553" class="sub">Derived, disposable and regenerated from claims</text>
+  <text x="1160" y="553" text-anchor="end" class="sub">Triage → extraction → resolution → integration → adjudication → regeneration</text>
+</svg>

@@ -1,0 +1,25 @@
+{% set a = now_state %}
+{% if a.cognition %}<p><span class="chip bad">cognition paused since {{ a.cognition.paused_since }}</span> <span class="muted">{{ a.cognition.reason }}</span></p>{% endif %}
+<table>
+  <tr><th>Worker</th><th>What</th><th>Stage</th><th>In stage for</th><th>Forecast</th></tr>
+  {% for r in a.running %}<tr><td class="mono">{{ r.worker }}</td><td>{{ r.what }}</td><td>{{ r.stage }}</td>
+    <td>{{ human(r.elapsed) }}</td><td>{% if r.remaining is not none %}~{{ human(r.remaining) }}{% else %}—{% endif %}</td></tr>
+  {% else %}<tr><td colspan="5" class="muted">No worker busy right now.</td></tr>{% endfor %}
+</table>
+<div class="grid" style="margin-top:10px">
+  {% for l in a.lanes %}<div><strong>{{ l.lane }}</strong> <span class="muted">({{ l.workers }} worker{{ 's' if l.workers > 1 }})</span><br>
+    {% if l.ready %}{{ l.ready }} in the queue · empties in ~{{ human(l.eta) }}{% else %}<span class="muted">queue empty</span>{% endif %}
+    {% if l.later %}<br><span class="muted">{{ l.later }} scheduled for later</span>{% endif %}
+    {% for k in l.kinds %}<br><span class="muted">{{ k.n }} × {{ k.kind }}</span>{% endfor %}</div>{% endfor %}
+  <div><strong>Batches (Batch API)</strong><br>
+    {% for b in a.batches %}{{ b.requests }} stages{% if b.done %} ({{ b.done }} done){% endif %} · sent {{ human(b.elapsed) }} ago ·
+      {% if b.remaining is not none %}back in ~{{ human(b.remaining) }} <span class="muted">({{ b.basis }})</span>{% else %}<span class="muted">{{ b.basis }}</span>{% endif %}<br>{% else %}<span class="muted">no batch in progress</span><br>{% endfor %}
+    {% if a.staged %}<span class="muted">{{ a.staged }} stages waiting for the next submission</span>{% endif %}</div>
+</div>
+{% if a.waiting %}<p style="margin-top:10px"><strong>Waiting</strong></p>
+  {% for w in a.waiting %}<div class="muted">{{ w.n }} × {{ w.kind }}: {{ w.err }}{% if w.in is not none %} · retry in {{ human(w.in) }}{% endif %}</div>{% endfor %}
+{% endif %}
+{% if a.tensions %}<p style="margin-top:10px"><strong>Tensions under judgment ({{ a.tensions|length }})</strong></p>
+  {% for t in a.tensions %}<div class="muted"><span class="mono">{{ t.id }}</span> · opened by {{ t.opened_by }} {{ human(((now - t.created_at).total_seconds()) if now else None) }} ago · {{ t.reason }}
+    {% if t.reopened %} · reopened by your revert: it will be judged again when the dossier changes{% endif %}</div>{% endfor %}
+{% endif %}

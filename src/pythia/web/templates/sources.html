@@ -1,0 +1,249 @@
+{% extends "base.html" %}
+{% block title %}Sources{% endblock %}
+{% block body %}
+<main>
+  <h1>Sources</h1>
+  <p class="sub">Explicit allowlist: only what is turned on is read. Claude Code sessions in <span class="mono">{{ root }}</span>.</p>
+  <div class="row" style="margin-bottom:12px">
+    <form method="post" action="/action/scan"><button>Scan now</button></form>
+    <form method="post" action="/action/resume"><button>Resume waiting jobs</button></form>
+  </div>
+
+  <script>  // estimate ready in seconds: reloads by itself while any is "calculating…"
+    // (retries every 4 s; only waits if you are typing in a text field)
+    if (document.querySelector(".calculating")) setInterval(() => {
+      const a = document.activeElement;
+      const typing = a && a.tagName === "INPUT" && a.type === "text" && a.value;
+      if (!typing) location.reload();
+    }, 4000);
+  </script>
+  <h2>Processing now</h2>
+  <div class="card" id="now">{% include "_now.html" %}</div>
+  <script>
+    (() => {
+      const box = document.getElementById("now");
+      setInterval(async () => {
+        if (document.hidden) return;
+        try { const r = await fetch("/sources/now"); if (r.ok) box.innerHTML = await r.text(); } catch (e) {}
+      }, 3000);
+    })();
+  </script>
+
+  <h2 id="sessions">Claude Code sessions</h2>
+  <div class="card">
+    <p class="muted">One chat per row, by the title you see in the app. A new chat shows up turned off: turn on only the ones worth it. Renaming or resuming a chat does not duplicate anything.</p>
+    <input type="text" id="chat_filter" placeholder="filter chats…" style="max-width:360px;margin-bottom:8px">
+    <table id="chat_table">
+      <tr><th>Chat</th><th>Last activity</th><th>Units</th><th></th></tr>
+      {% for p in projects %}{% set s = stats.get(p.source_id) %}
+      <tr>
+        <td>{{ p.title }}{% if p.archived %} <span class="chip">archived</span>{% endif %}<br>
+          <span class="muted mono">{{ p.project or '—' }} · {{ p.files|length }} session {{ 'file' if p.files|length == 1 else 'files' }}{% if p.origin == 'terminal' %} · terminal{% elif p.origin == 'removed from disk' %} · removed from disk{% endif %}</span></td>
+        <td>{{ p.last_activity|dt if p.last_activity else '—' }}</td>
+        <td>{% if s %}
+          {% set total = s.pending + s.processed + s.triaged_out + s.failed %}
+          <div class="bar" title="{{ s.processed + s.triaged_out }} of {{ total }}"><span style="width: {{ ((s.processed + s.triaged_out) / total * 100) if total else 0 }}%"></span></div>
+          <span class="muted">{{ s.processed }} processed · {{ s.triaged_out }} discarded at triage · {{ s.pending }} pending{% if s.failed %} · {{ s.failed }} failed{% endif %}</span>
+          {% if s.in_backfill %}<br><span class="chip warn">in backfill</span> <span class="muted">{{ s.in_batch }} stages in the batch · synthesis deferred for {{ s.deferred }} entities</span>{% endif %}
+        {% else %}—{% endif %}</td>
+        <td>{% if p.added %}
+            <form method="post" action="/action/source/toggle"><input type="hidden" name="source_id" value="{{ p.source_id }}">
+              <button class="{{ '' if p.enabled else 'primary' }}">{{ 'Pause' if p.enabled else 'Turn on' }}</button></form>
+            <form method="post" action="/action/source/remove" onsubmit="return confirm('Remove retracts everything that came only from this chat. Continue?')">
+              <input type="hidden" name="source_id" value="{{ p.source_id }}"><button class="danger">Remove</button></form>
+          {% else %}
+            <form method="post" action="/action/chat/enable"><input type="hidden" name="chat_id" value="{{ p.id }}"><button class="primary">Turn on</button></form>
+          {% endif %}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="4" class="muted">No chat found in <span class="mono">{{ root }}</span>.</td></tr>
+      {% endfor %}
+    </table>
+    <script>
+      (() => {
+        const f = document.getElementById("chat_filter"), rows = [...document.querySelectorAll("#chat_table tr")].slice(1);
+        f.addEventListener("input", () => { const q = f.value.toLowerCase();
+          rows.forEach(r => { r.style.display = !q || r.innerText.toLowerCase().includes(q) ? "" : "none"; }); });
+      })();
+    </script>
+  </div>
+
+  <h2>GitHub</h2>
+  <div class="card">
+    <p class="muted">PRs come in when merged, closed, or open and idle; later activity becomes a delta. Backfill of the last months, from newest to oldest.</p>
+    <table>
+      <tr><th>Repository</th><th>What to read</th><th>Backfill cost</th><th>State</th><th></th></tr>
+      {% for r in repos %}{% set s = stats.get(r.id) %}
+      <tr><td class="mono">{{ r.config.repo }}<br><span class="muted">{{ r.prs }} PRs seen</span></td>
+        <td><form method="post" action="/action/github/config" class="row">
+          <input type="hidden" name="source_id" value="{{ r.id }}">
+          <select name="mode">{% for k, label in modes.items() %}<option value="{{ k }}" {{ 'selected' if r.mode == k }}>{{ label }}</option>{% endfor %}</select>
+          <input type="number" name="horizon_days" value="{{ r.horizon }}" style="width:80px" title="horizon (days)"> days
+          <button>Save</button></form></td>
+        <td>{% if r.backfill_until %}
+            {% if s and s.in_backfill %}in progress{% else %}backfill complete{% endif %} · {{ r.prs }} PRs · cost <strong>US${{ '%.2f'|format(r.spent) }}</strong>
+            {% if r.estimate and r.estimate.new %}<br>+{{ r.estimate.new }} PRs to read ≈ <strong>US${{ '%.2f'|format(r.estimate.usd_new) }}</strong>{% endif %}
+          {% elif r.estimate %}{{ '' if r.estimate.exact else '≥ ' }}{{ r.estimate.prs }} PRs × US${{ '%.2f'|format(r.estimate.avg_cost) }} ≈ <strong>US${{ '%.2f'|format(r.estimate.usd) }}</strong>
+            <br><span class="muted">measured average per PR; the batch (50%) and deferred synthesis tend to lower it</span>{% else %}<span class="muted calculating">calculating…</span>{% endif %}</td>
+        <td>{% if r.error %}<span class="chip bad">{{ r.error.error }}</span>{% elif s %}<span class="muted">{{ s.processed }} processed · {{ s.triaged_out }} discarded · {{ s.pending }} pending</span>{% endif %}{% if s and s.in_backfill %}<br><span class="chip warn">in backfill</span> <span class="muted">{{ s.in_batch }} stages in the batch · synthesis deferred for {{ s.deferred }} entities</span>{% endif %}</td>
+        <td><form method="post" action="/action/source/toggle"><input type="hidden" name="source_id" value="{{ r.id }}">
+            <button class="{{ '' if r.enabled else 'primary' }}">{{ 'Pause' if r.enabled else 'Turn on' }}</button></form>
+          <form method="post" action="/action/source/remove" onsubmit="return confirm('Remove retracts everything that came only from this repository. Continue?')">
+            <input type="hidden" name="source_id" value="{{ r.id }}"><button class="danger">Remove</button></form></td></tr>
+      {% else %}<tr><td colspan="5" class="muted">No repository on the allowlist.</td></tr>{% endfor %}
+    </table>
+    <p class="muted">Adding comes in paused: the estimate shows up and you turn it on when you want. Pausing keeps what was read; Remove retracts it.</p>
+    <form method="post" action="/action/github/add" class="row" style="margin-top:8px">
+      <input type="text" name="repo" placeholder="owner/repository" style="max-width:360px">
+      <button class="primary">Add</button>
+    </form>
+  </div>
+
+  <h2>incident.io catalog</h2>
+  <div class="card">
+    <p class="muted">Entity seed (people, teams, systems, repositories) with external identifiers. No LLM on read; the relations go through integration.</p>
+    {% if not catalog_state.has_key %}<p><span class="chip bad">no key</span> set the API key in <a href="/config">Settings</a>.</p>{% endif %}
+    {% if catalog_state.error %}<p><span class="chip bad">{{ catalog_state.error.error }}</span></p>{% endif %}
+    <p>{{ catalog_state.entities }} anchored entities in the catalog{% if catalog_state.last %} · last sync {{ catalog_state.last.at }} ({{ catalog_state.last.entities_created }} created, {{ catalog_state.last.entities_updated }} updated, {{ catalog_state.last.claims }} claims){% endif %}</p>
+    <form method="post" action="/action/catalog"><input type="hidden" name="enable" value="{{ 0 if catalog and catalog.enabled else 1 }}">
+      <button class="{{ '' if catalog and catalog.enabled else 'primary' }}">{{ 'Turn off' if catalog and catalog.enabled else 'Turn on' }}</button></form>
+    <p class="muted">Synced types: {% for t, e in catalog_state.types.items() if e %}<span class="mono">{{ t }}</span> → {{ e }}{{ ', ' if not loop.last }}{% endfor %} (adjust in Settings)</p>
+  </div>
+
+  <h2 id="slack">Slack</h2>
+  <div class="card">
+    <p class="muted">Threads and loose channel messages come in when the conversation goes idle; a new reply after that becomes a delta. Read with your user token, no bot. Backfill of the last days, from newest to oldest.</p>
+    {% if not slack_state.has_token %}<p><span class="chip bad">no token</span> set the token in <a href="/config">Settings</a>.</p>{% endif %}
+    {% if slack_state.error %}<p><span class="chip bad">{{ slack_state.error.error }}</span></p>{% endif %}
+    <table>
+      <tr><th>Conversation</th><th>Backfill</th><th>Backfill cost</th><th>State</th><th></th></tr>
+      {% for r in channels %}{% set s = stats.get(r.id) %}
+      <tr><td class="mono">{{ r.name }}<br><span class="muted">{{ r.config.kind }} · {{ r.conversations }} conversations seen</span></td>
+        <td><form method="post" action="/action/slack/config" class="row">
+          <input type="hidden" name="source_id" value="{{ r.id }}">
+          <input type="number" name="horizon_days" value="{{ r.horizon }}" style="width:80px" title="horizon (days)"> days
+          <button>Save</button></form></td>
+        <td>{% if r.backfill_until %}
+            {% if s and s.in_backfill %}in progress{% else %}backfill complete{% endif %} · cost <strong>US${{ '%.2f'|format(r.spent) }}</strong>
+            {% if r.estimate and r.estimate.new and (r.config.state or {}).get('full_rescan') %}<br>+{{ r.estimate.new }} messages to read ≈ <strong>US${{ '%.2f'|format(r.estimate.usd_new) }}</strong>{% endif %}
+          {% elif r.estimate %}{{ r.estimate.messages }} messages + {{ r.estimate.replies }} replies ≈ <strong>US${{ '%.2f'|format(r.estimate.usd) }}</strong>
+            <br><span class="muted">measured average cost per character; the batch (50%) and deferred synthesis tend to lower it</span>{% elif slack_state.has_token %}<span class="muted calculating">calculating…</span>{% else %}<span class="muted">—</span>{% endif %}</td>
+        <td>{% if r.error %}<span class="chip bad">{{ r.error.error }}</span>{% elif s %}<span class="muted">{{ s.processed }} processed · {{ s.triaged_out }} discarded · {{ s.pending }} pending</span>{% endif %}{% if s and s.in_backfill %}<br><span class="chip warn">in backfill</span> <span class="muted">{{ s.in_batch }} stages in the batch · synthesis deferred for {{ s.deferred }} entities</span>{% endif %}</td>
+        <td><form method="post" action="/action/source/toggle"><input type="hidden" name="source_id" value="{{ r.id }}">
+            <button class="{{ '' if r.enabled else 'primary' }}">{{ 'Pause' if r.enabled else 'Turn on' }}</button></form>
+          <form method="post" action="/action/source/remove" onsubmit="return confirm('Remove retracts everything that came only from this conversation. Continue?')">
+            <input type="hidden" name="source_id" value="{{ r.id }}"><button class="danger">Remove</button></form></td></tr>
+      {% else %}<tr><td colspan="5" class="muted">No conversation on the allowlist.</td></tr>{% endfor %}
+    </table>
+    <p class="muted">Adding comes in paused: the estimate shows up and you turn it on when you want. Pausing keeps what was read; Remove retracts it.</p>
+    {% if slack_state.has_token %}
+    <div class="row" style="margin-top:8px;align-items:center">
+      <input type="text" id="slack_filter" placeholder="filter conversations (name, person, type)…" style="max-width:420px">
+      <form method="post" action="/action/slack/refresh"><button>Refresh list</button></form>
+      <span class="muted">{% if slack_state.at %}list from {{ slack_state.at|dt }}{% else %}the list appears after you save the token{% endif %}</span>
+    </div>
+    {% set labels = {'channel': 'Channels', 'private': 'Private channels', 'dm': 'Direct messages', 'group': 'Group conversations'} %}
+    {% for kind, label in labels.items() %}{% set items = slack_state.available|selectattr('kind', 'equalto', kind)|list %}
+      {% if items %}<details class="slack-kind" style="margin-top:8px" {{ 'open' if loop.first }}>
+        <summary><strong>{{ label }}</strong> <span class="muted slack-count" data-total="{{ items|length }}">({{ items|length }})</span></summary>
+        <div style="max-height:300px;overflow-y:auto;margin-top:6px;border:1px solid var(--line);border-radius:6px">
+          <table>{% for c in items %}<tr class="slack-row">
+            <td>{{ c.name }}{% if c.archived %} <span class="chip">archived</span>{% endif %}</td>
+            <td style="width:1%;white-space:nowrap"><form method="post" action="/action/slack/add">
+              <input type="hidden" name="channel" value="{{ c.id }}"><button>Add</button></form></td></tr>{% endfor %}
+          </table>
+        </div>
+      </details>{% endif %}
+    {% else %}<p class="muted">No conversation.</p>{% endfor %}
+    <script>
+      (() => {
+        const f = document.getElementById("slack_filter");
+        if (!f) return;
+        f.addEventListener("input", () => {
+          const q = f.value.toLowerCase();
+          document.querySelectorAll("details.slack-kind").forEach(d => {
+            let shown = 0;
+            d.querySelectorAll(".slack-row").forEach(r => {
+              const ok = !q || (r.innerText + " " + d.querySelector("summary").innerText).toLowerCase().includes(q);
+              r.style.display = ok ? "" : "none"; shown += ok ? 1 : 0; });
+            const c = d.querySelector(".slack-count");
+            c.textContent = q ? `(${shown} of ${c.dataset.total})` : `(${c.dataset.total})`;
+            d.style.display = shown ? "" : "none";
+            if (q && shown) d.open = true;
+          });
+        });
+      })();
+    </script>
+    {% endif %}
+  </div>
+
+  <h2 id="confluence">Confluence</h2>
+  <div class="card">
+    <p class="muted">Whole spaces or page trees. Backfill reads the current version; afterwards, only the sections that change. An edit does not erase what came from the previous version: the adjudicator decides whether it still holds, evolved or was wrong.</p>
+    {% if not cf_state.has_token %}<p><span class="chip bad">no token</span> set site, email and token in <a href="/config">Settings</a>.</p>{% endif %}
+    {% if cf_state.error %}<p><span class="chip bad">{{ cf_state.error.error }}</span></p>{% endif %}
+    <table>
+      <tr><th>What</th><th>Backfill cost</th><th>State</th><th></th></tr>
+      {% for r in cf_sources %}{% set s = stats.get(r.id) %}
+      <tr><td>{{ r.name }}<br><span class="muted">{{ r.pages }} pages read</span></td>
+        <td>{% if r.backfill_until %}
+            {% if s and s.in_backfill %}in progress{% else %}backfill complete{% endif %} · cost <strong>US${{ '%.2f'|format(r.spent) }}</strong>
+            {% if r.estimate and r.estimate.new %}<br>+{{ r.estimate.new }} pages to read ≈ <strong>US${{ '%.2f'|format(r.estimate.usd_new) }}</strong>{% endif %}
+          {% elif r.estimate %}{{ r.estimate.pages }} pages ≈ <strong>US${{ '%.2f'|format(r.estimate.usd) }}</strong>
+            <br><span class="muted">measured average cost per character (without comments); the batch and deferred synthesis tend to lower it</span>
+          {% elif cf_state.has_token %}<span class="muted calculating">calculating…</span>{% else %}—{% endif %}</td>
+        <td>{% if r.error %}<span class="chip bad">{{ r.error.error }}</span>{% elif s %}<span class="muted">{{ s.processed }} processed · {{ s.triaged_out }} discarded · {{ s.pending }} pending</span>{% endif %}{% if s and s.in_backfill %}<br><span class="chip warn">in backfill</span> <span class="muted">{{ s.in_batch }} stages in the batch · synthesis deferred for {{ s.deferred }} entities</span>{% endif %}</td>
+        <td><form method="post" action="/action/source/toggle"><input type="hidden" name="source_id" value="{{ r.id }}">
+            <button class="{{ '' if r.enabled else 'primary' }}">{{ 'Pause' if r.enabled else 'Turn on' }}</button></form>
+          <form method="post" action="/action/source/remove" onsubmit="return confirm('Remove retracts everything that came only from here, including the version history. Continue?')">
+            <input type="hidden" name="source_id" value="{{ r.id }}"><button class="danger">Remove</button></form></td></tr>
+      {% else %}<tr><td colspan="4" class="muted">Nothing from Confluence on the allowlist.</td></tr>{% endfor %}
+    </table>
+    {% if cf_state.has_token %}
+    <div class="row" style="margin-top:8px;align-items:center">
+      <form method="get" action="/sources" class="row" style="align-items:center">
+        <select name="cf_space" onchange="this.form.submit()" style="max-width:360px">
+          <option value="">choose a space…</option>
+          {% for sp in cf_state.spaces %}<option value="{{ sp.key }}" {{ 'selected' if sp.key == cf_state.space }}>{{ sp.name }} ({{ sp.key }}){{ ' · personal' if sp.type == 'personal' }}</option>{% endfor %}
+        </select>
+      </form>
+      <form method="post" action="/action/confluence/refresh"><button>Refresh spaces</button></form>
+      <span class="muted">{% if cf_state.at %}list from {{ cf_state.at|dt }}{% else %}the list appears after you save the token{% endif %}</span>
+    </div>
+    {% if cf_state.space %}
+      {% set sp = (cf_state.spaces|selectattr('key', 'equalto', cf_state.space)|list|first) %}
+      <div class="row" style="margin-top:8px;align-items:center">
+        {% if (cf_state.space, None) in cf_state.added %}<span class="chip ok">whole space on the allowlist</span>
+        {% else %}<form method="post" action="/action/confluence/add"><input type="hidden" name="space_key" value="{{ cf_state.space }}">
+          <button class="primary">Add the whole space</button></form>{% endif %}
+        <form method="post" action="/action/confluence/pages"><input type="hidden" name="space_key" value="{{ cf_state.space }}">
+          <button>{{ 'Reload pages' if cf_state.outline else 'Load pages to choose trees' }}</button></form>
+        <input type="text" id="cf_filter" placeholder="filter pages…" style="max-width:300px">
+      </div>
+      {% if cf_state.outline %}
+      <div style="max-height:360px;overflow-y:auto;margin-top:8px;border:1px solid var(--line);border-radius:6px">
+        <table id="cf_table">{% for pg in cf_state.outline["items"] %}<tr class="cf-row">
+          <td style="padding-left:{{ 8 + pg.depth * 16 }}px">{{ '📁 ' if pg.folder }}{{ pg.title }}</td>
+          <td style="width:1%;white-space:nowrap">{% if (cf_state.space, pg.id) in cf_state.added %}<span class="chip ok">on the allowlist</span>{% else %}
+            <form method="post" action="/action/confluence/add"><input type="hidden" name="space_key" value="{{ cf_state.space }}">
+              <input type="hidden" name="root_id" value="{{ pg.id }}"><input type="hidden" name="root_title" value="{{ pg.title }}">
+              <button>Add tree</button></form>{% endif %}</td></tr>{% endfor %}
+        </table>
+      </div>
+      <script>
+        (() => { const f = document.getElementById("cf_filter"); if (!f) return;
+          f.addEventListener("input", () => { const q = f.value.toLowerCase();
+            document.querySelectorAll("#cf_table .cf-row").forEach(r => { r.style.display = !q || r.innerText.toLowerCase().includes(q) ? "" : "none"; }); }); })();
+      </script>
+      {% elif cf_state.space %}<p class="muted calculating">loading the space's pages…</p>{% endif %}
+    {% endif %}
+    {% endif %}
+  </div>
+
+  {% if failed %}<h2>Recent failures</h2>
+  <div class="card">
+    {% for f in failed %}<div class="mono muted">#{{ f.id }} {{ f.kind }} · {{ f.finished_at|dt }} · {{ f.last_error }}</div>{% endfor %}
+  </div>{% endif %}
+  <p class="muted">Planned: Zoom.</p>
+</main>
+{% endblock %}

@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Costs{% endblock %}
+{% block body %}
+<main>
+  <h1>Costs</h1>
+  <p class="sub">LLM spend for the current month. When the cap is reached, all calls stop until the month rolls over or the cap is raised.</p>
+  <div class="card">
+    <div class="row"><strong>{{ spend|money }}</strong> <span class="muted">of US${{ '%.2f'|format(cap) }}</span></div>
+    <div class="bar" style="margin-top:6px"><span style="width: {{ [spend / cap * 100 if cap else 0, 100]|min }}%"></span></div>
+  </div>
+  <div class="grid">
+    {% for title, rows in [('By role', by_role), ('By model', by_model), ('By source', by_source), ('Immediate × batch', by_mode)] %}
+    <div class="card"><strong>{{ title }}</strong>
+      <table><tr><th></th><th>Calls</th><th>Cost</th></tr>
+        {% for r in rows %}<tr><td class="mono">{{ r.k }}</td><td>{{ r.n }}</td><td>{{ r.c|money }}</td></tr>{% else %}<tr><td colspan="3" class="muted">Nothing yet.</td></tr>{% endfor %}
+      </table></div>
+    {% endfor %}
+  </div>
+  <h2>Tokens by role</h2>
+  <div class="card"><table><tr><th>Role</th><th>Input</th><th>Output</th><th>Read from cache</th></tr>
+    {% for r in by_role %}<tr><td class="mono">{{ r.k }}</td><td>{{ r.i }}</td><td>{{ r.o }}</td><td>{{ r.cr }}</td></tr>{% endfor %}
+  </table></div>
+  <h2>By day</h2>
+  <div class="card"><table><tr><th>Day</th><th>Calls</th><th>Cost</th></tr>
+    {% for r in by_day %}<tr><td>{{ r.d }}</td><td>{{ r.n }}</td><td>{{ r.c|money }}</td></tr>{% endfor %}
+  </table></div>
+  {% if errors %}<h2>Call failures</h2>
+  <div class="card">{% for e in errors %}<div class="mono">{{ e.n }} × {{ e.error }}</div>{% endfor %}</div>{% endif %}
+</main>
+{% endblock %}
