@@ -21,11 +21,21 @@ import sys
 import time
 from pathlib import Path
 
+from . import __version__
+
 HOME = Path(os.environ.get("PYTHIA_HOME", Path.home() / ".pythia"))
 PIDFILE = HOME / "pythia.pid"
 LOGFILE = HOME / "pythia.log"
 REPO = Path(__file__).resolve().parents[2]
 CONTAINER = "pythia-db"
+
+
+def _compose_file() -> Path:
+    """docker-compose.yml shipped inside the package (pip install) or at the repository root (source checkout)."""
+    for candidate in (Path(__file__).parent / "docker-compose.yml", REPO / "docker-compose.yml"):
+        if candidate.exists():
+            return candidate
+    raise SystemExit("docker-compose.yml not found; set PYTHIA_DATABASE_URL to use your own Postgres")
 
 
 def _pid() -> int | None:
@@ -46,7 +56,7 @@ def ensure_database() -> None:
         if state.stdout.strip() != "true":
             subprocess.run(["docker", "start", CONTAINER], check=True, capture_output=True)
     else:
-        subprocess.run(["docker", "compose", "-f", str(REPO / "docker-compose.yml"), "up", "-d"], check=True)
+        subprocess.run(["docker", "compose", "-p", "pythia", "-f", str(_compose_file()), "up", "-d"], check=True)
     from .db import database_url
     import psycopg
     for _ in range(30):
@@ -204,7 +214,7 @@ def cmd_autostart(args) -> None:
         # `start` leaves the process running on its own; the agent ends right afterwards. Without
         # KeepAlive, so that `pythia stop` keeps really stopping it.
         "AbandonProcessGroup": True,
-        "WorkingDirectory": str(REPO),
+        "WorkingDirectory": str(HOME),
         "EnvironmentVariables": {"PATH": ":".join(DOCKER_PATHS)},
         "StandardOutPath": str(AUTOSTART_LOG),
         "StandardErrorPath": str(AUTOSTART_LOG),
@@ -220,6 +230,7 @@ def cmd_autostart(args) -> None:
 
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(prog="pythia", description="Personal knowledge oracle.")
+    parser.add_argument("--version", action="version", version=f"pythia {__version__}")
     sub = parser.add_subparsers(dest="cmd", required=True)
     for name, fn in (("start", cmd_start), ("stop", cmd_stop), ("status", cmd_status), ("run", cmd_run),
                      ("boot", cmd_boot)):

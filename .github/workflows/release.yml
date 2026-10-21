@@ -1,0 +1,126 @@
+# Release: tag vX.Y.Z -> build wheel/sdist -> smoke test -> GitHub Release -> TestPyPI -> PyPI
+#
+# One-time setup (Trusted Publishing, no API tokens):
+#   1. GitHub Environments `testpypi` and `pypi` (optional required reviewers on `pypi`).
+#   2. Pending publishers on TestPyPI and PyPI for project `pythia-knowledge`,
+#      owner `caribeedu`, repository `pythia`, workflow `release.yml`,
+#      with the environment names above.
+name: release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-release:
+    name: build, smoke test, GitHub Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Check that the tag matches the package version
+        id: meta
+        run: |
+          set -euo pipefail
+          VERSION=$(python -c "import re; print(re.search(r'__version__ = \"([^\"]+)\"', open('src/pythia/__init__.py').read()).group(1))")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          if [[ "${{ github.event_name }}" == "push" && "${{ github.ref_type }}" == "tag" ]]; then
+            TAG="${GITHUB_REF_NAME#v}"
+            if [[ "$TAG" != "$VERSION" ]]; then
+              echo "::error::tag v$TAG does not match the package version $VERSION"
+              exit 1
+            fi
+          fi
+          echo "Building pythia-knowledge==$VERSION"
+
+      - name: Build sdist and wheel
+        run: |
+          pip install build
+          python -m build
+
+      - name: Smoke test the wheel
+        run: |
+          set -euo pipefail
+          python -m venv /tmp/smoke
+          /tmp/smoke/bin/pip install dist/pythia_knowledge-*.whl
+          /tmp/smoke/bin/pythia --version | grep "${{ steps.meta.outputs.version }}"
+
+      - name: Extract release notes from the changelog
+        env:
+          VERSION: ${{ steps.meta.outputs.version }}
+        run: |
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          version = os.environ["VERSION"]
+          lines = Path("CHANGELOG.md").read_text(encoding="utf-8").splitlines()
+          start = next((i for i, l in enumerate(lines) if l.startswith(f"## v{version}")), None)
+          if start is None:
+              body = f"Release v{version}."
+          else:
+              end = next((j for j in range(start + 1, len(lines)) if lines[j].startswith("## v")), len(lines))
+              body = "\n".join(lines[start + 1:end]).strip()
+          Path("release_notes.md").write_text(body + "\n", encoding="utf-8")
+          PY
+
+      - name: Upload the distributions
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-package-distributions
+          path: dist/
+
+      - name: Create the GitHub Release
+        if: github.event_name == 'push' && github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          body_path: release_notes.md
+          fail_on_unmatched_files: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish-testpypi:
+    name: publish to TestPyPI
+    needs: build-release
+    runs-on: ubuntu-latest
+    environment: testpypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: python-package-distributions
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          packages-dir: dist/
+
+  publish-pypi:
+    name: publish to PyPI
+    needs: [build-release, publish-testpypi]
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: python-package-distributions
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/

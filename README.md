@@ -1,12 +1,12 @@
 <p align="center">
-  <img src="assets/banner.svg" alt="Pythia — a personal knowledge oracle" width="100%">
+  <img src="https://raw.githubusercontent.com/caribeedu/pythia/main/assets/banner.svg" alt="Pythia — a personal knowledge oracle" width="100%">
 </p>
 
 <p align="center">
   <a href="https://github.com/caribeedu/pythia/actions/workflows/tests.yml"><img src="https://github.com/caribeedu/pythia/actions/workflows/tests.yml/badge.svg" alt="tests"></a>
   <img src="https://img.shields.io/badge/python-3.13%20%7C%203.14-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.13 | 3.14">
   <img src="https://img.shields.io/badge/MCP-5%20tools-c07a2c?style=flat-square" alt="MCP, 5 tools">
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-22c55e?style=flat-square" alt="MIT"></a>
+  <a href="https://github.com/caribeedu/pythia/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-22c55e?style=flat-square" alt="MIT"></a>
 </p>
 
 # Pythia
@@ -33,7 +33,7 @@ AI assistants forget. Each session starts blank, so you keep explaining how you 
 - **Edits and deletions are respected.** An edit retracts the previous version; a deletion at the source erases the content *and* every derived text, including old page versions.
 - **Small external interface.** Five MCP tools (`search`, `open`, `timeline`, `correct`, `define`) and a short push briefing whose text is always stored knowledge, never generated prose.
 - **No LLM, no guessing.** Judgment is always done by an LLM; there are no regex or heuristic fallbacks. Without a key, network or budget, ingestion continues and reads serve what was already concluded, with a notice.
-- **Measured.** Cost ledger and monthly cap, golden questions with a sealed half and a plain-search baseline, correction rate per role, and a method to measure avoided re-explanation ([docs/measuring-value.md](docs/measuring-value.md)).
+- **Measured.** Cost ledger and monthly cap, golden questions with a sealed half and a plain-search baseline, correction rate per role, and a method to measure avoided re-explanation ([docs/measuring-value.md](https://github.com/caribeedu/pythia/blob/main/docs/measuring-value.md)).
 
 ### Sources and consumers
 
@@ -62,24 +62,28 @@ Zoom is planned.
 ## How it works
 
 <p align="center">
-  <img src="assets/how-it-works.svg" alt="How Pythia works: sources become evidence, mentions, entities and claims; conflicts become tensions and verdicts; claims feed pages, narratives and the map that serve the push hook and the MCP tools" width="100%">
+  <img src="https://raw.githubusercontent.com/caribeedu/pythia/main/assets/how-it-works.svg" alt="How Pythia works: sources become evidence, mentions, entities and claims; conflicts become tensions and verdicts; claims feed pages, narratives and the map that serve the push hook and the MCP tools" width="100%">
 </p>
 
 A unit of a source (a settled thread, a merged PR, a chat delta, a page edit) goes through **triage → extraction → entity resolution → integration → adjudication (when needed) → regeneration of derivatives**, on a single Postgres job queue with separate lanes for I/O, cognition and derivation. State is event-sourced, so the base can answer both *what is true* and *what Pythia believed at time T*.
 
-Details: [docs/architecture.md](docs/architecture.md).
+Details: [docs/architecture.md](https://github.com/caribeedu/pythia/blob/main/docs/architecture.md).
 
 ## Getting started
 
 **Requirements:** Python 3.13 or 3.14, [uv](https://docs.astral.sh/uv/), Docker (Postgres 17 with pgvector) and an [Anthropic API key](https://console.anthropic.com/). Credentials are stored with the OS keychain (`keyring`); autostart at login is available on macOS.
 
+Install it from PyPI (the package is `pythia-knowledge`; the command is `pythia`):
+
 ```bash
-uv sync
+uv tool install pythia-knowledge
 ```
 
 ```bash
-.venv/bin/pythia start
+pythia start
 ```
+
+Or run it from a source checkout with `uv sync` and `uv run pythia start`.
 
 `start` brings up the database container if needed, then runs the daemon and the web server in the background. Open <http://127.0.0.1:7117> and:
 
@@ -135,11 +139,11 @@ If you change a prompt or schema, bump `VERSION` in `src/pythia/pipeline/prompts
 
 | Document | About |
 |---|---|
-| [Architecture](docs/architecture.md) | Knowledge model, entity resolution, conflicts, ingestion, consumption, stack |
-| [Decisions](docs/decisions.md) | Numbered core decisions (D1–D22) and how each area applies them |
-| [Design rationale](docs/design-rationale.md) | Why it is the way it is: principles, influences and what real use taught |
-| [Measuring value](docs/measuring-value.md) | Metrics, experiment design and results |
-| [Known limitations](docs/known-issues.md) | Open problems and their proposed fixes |
+| [Architecture](https://github.com/caribeedu/pythia/blob/main/docs/architecture.md) | Knowledge model, entity resolution, conflicts, ingestion, consumption, stack |
+| [Decisions](https://github.com/caribeedu/pythia/blob/main/docs/decisions.md) | Numbered core decisions (D1–D22) and how each area applies them |
+| [Design rationale](https://github.com/caribeedu/pythia/blob/main/docs/design-rationale.md) | Why it is the way it is: principles, influences and what real use taught |
+| [Measuring value](https://github.com/caribeedu/pythia/blob/main/docs/measuring-value.md) | Metrics, experiment design and results |
+| [Known limitations](https://github.com/caribeedu/pythia/blob/main/docs/known-issues.md) | Open problems and their proposed fixes |
 
 ## Principles
 
@@ -151,8 +155,8 @@ If you change a prompt or schema, bump `VERSION` in `src/pythia/pipeline/prompts
 
 ## Contributing and security
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request, and [SECURITY.md](SECURITY.md) to report a vulnerability.
+See [CONTRIBUTING.md](https://github.com/caribeedu/pythia/blob/main/CONTRIBUTING.md) before opening a pull request, and [SECURITY.md](https://github.com/caribeedu/pythia/blob/main/SECURITY.md) to report a vulnerability.
 
 ## License
 
-[MIT](LICENSE)
+[MIT](https://github.com/caribeedu/pythia/blob/main/LICENSE)
