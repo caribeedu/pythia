@@ -15,6 +15,11 @@ Pythia continuously reads the places where your work happens, keeps a base of at
 
 It is the spiritual successor of [Twin](https://github.com/caribeedu/twin) and the goal is the same.
 
+> [!IMPORTANT]
+> **Need a knowledge oracle, or just an AI that truly sees you?** Pythia is for those who need to cross-reference complex contexts, and it spends a lot of tokens to do it.
+> **[who-am-ai](https://github.com/caribeedu/who-am-ai)**, a leaner alternative, listens to what you say to your assistant, and how, and keeps one short profile it loads every time.
+> It keeps only general, durable preferences, never one-off task details, in a file you can read, edit and veto. A fraction of the tokens. To stop repeating yourself, start there.
+
 ## Why
 
 AI assistants forget. Each session starts blank, so you keep explaining how you write, who owns which system, what the team decided last week and what caused that bug. Product memories help inside one assistant; retrieval returns fragments without knowing which are still true. Pythia keeps *what is currently true*, where it came from, and what changed.
