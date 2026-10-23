@@ -13,7 +13,7 @@
 
 Pythia continuously reads the places where your work happens, keeps a base of atomic claims with provenance and time, detects when knowledge becomes outdated or contradictory, and delivers what matters to your LLMs, automatically through hooks (push) and on demand through MCP (pull).
 
-It is the spiritual successor of [Twin](https://github.com/caribeedu/twin) and the goal is the same.
+It is the spiritual successor of [Twin](https://github.com/caribeedu/twin) and the goal still the same.
 
 > [!IMPORTANT]
 > **Need a knowledge oracle, or just an AI that truly sees you?** Pythia is for those who need to cross-reference complex contexts, and it spends a lot of tokens to do it.
