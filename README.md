@@ -4,9 +4,10 @@
 
 <p align="center">
   <a href="https://github.com/caribeedu/pythia/actions/workflows/tests.yml"><img src="https://github.com/caribeedu/pythia/actions/workflows/tests.yml/badge.svg" alt="tests"></a>
-  <img src="https://img.shields.io/badge/python-3.13%20%7C%203.14-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.13 | 3.14">
-  <img src="https://img.shields.io/badge/MCP-5%20tools-c07a2c?style=flat-square" alt="MCP, 5 tools">
-  <a href="https://github.com/caribeedu/pythia/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-22c55e?style=flat-square" alt="MIT"></a>
+  <a href="https://pypi.org/project/pythia-knowledge/"><img src="https://img.shields.io/pypi/v/pythia-knowledge?style=flat-square&color=c07a2c" alt="PyPI version"></a>
+  <a href="https://pypi.org/project/pythia-knowledge/"><img src="https://img.shields.io/pypi/pyversions/pythia-knowledge?style=flat-square&logo=python&logoColor=white" alt="Python versions"></a>
+  <a href="https://pepy.tech/project/pythia-knowledge"><img src="https://img.shields.io/pepy/dt/pythia-knowledge?style=flat-square&color=c07a2c" alt="Downloads"></a>
+  <a href="https://github.com/caribeedu/pythia/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-c07a2c?style=flat-square" alt="MIT"></a>
 </p>
 
 # Pythia
