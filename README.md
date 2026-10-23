@@ -6,7 +6,6 @@
   <a href="https://github.com/caribeedu/pythia/actions/workflows/tests.yml"><img src="https://github.com/caribeedu/pythia/actions/workflows/tests.yml/badge.svg" alt="tests"></a>
   <a href="https://pypi.org/project/pythia-knowledge/"><img src="https://img.shields.io/pypi/v/pythia-knowledge?style=flat-square&color=c07a2c" alt="PyPI version"></a>
   <a href="https://pypi.org/project/pythia-knowledge/"><img src="https://img.shields.io/pypi/pyversions/pythia-knowledge?style=flat-square&logo=python&logoColor=white" alt="Python versions"></a>
-  <a href="https://pepy.tech/project/pythia-knowledge"><img src="https://img.shields.io/pepy/dt/pythia-knowledge?style=flat-square&color=c07a2c" alt="Downloads"></a>
   <a href="https://github.com/caribeedu/pythia/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-c07a2c?style=flat-square" alt="MIT"></a>
 </p>
 
