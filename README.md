@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/caribeedu/pythia/main/assets/banner.svg" alt="Pythia — a personal knowledge oracle" width="100%">
+  <img src="https://raw.githubusercontent.com/caribeedu/pythia/main/assets/banner.svg?v=2" alt="Pythia — a personal knowledge oracle" width="100%">
 </p>
 
 <p align="center">
@@ -11,7 +11,7 @@
 
 # Pythia
 
-Pythia continuously reads the places where your work happens, keeps a base of atomic claims with provenance and time, detects when knowledge becomes outdated or contradictory, and delivers what matters to your LLMs, automatically through hooks (push) and on demand through MCP (pull).
+Pythia continuously reads the places where your work happens and extracts atomic claims, each with its provenance and time. It builds and stores syntheses and connections over those claims, and when a claim becomes outdated or is contradicted, it detects the change and rebuilds everything that depended on it. Through hooks (push) and MCP (pull), it delivers to your LLMs only what matters, already worked out, instead of loose information that every LLM would have to reflect on all over again.
 
 It is the spiritual successor of [Twin](https://github.com/caribeedu/twin) and the goal still the same.
 

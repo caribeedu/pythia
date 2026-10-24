@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.0.1
+
+- A clearer description of what sets Pythia apart: syntheses and connections over atomic claims, delivered through hooks and MCP.
+
 ## v1.0.0
 
 First stable release.

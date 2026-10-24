@@ -50,5 +50,5 @@
   <!-- text -->
   <text x="70" y="170" font-family="Georgia, 'Times New Roman', serif" font-size="92" font-weight="700" fill="#ecebe8" letter-spacing="2">Pythia</text>
   <text x="74" y="220" font-family="'Segoe UI', Helvetica, Arial, sans-serif" font-size="26" fill="#e0a43a">A personal knowledge oracle</text>
-  <text x="74" y="268" font-family="'Segoe UI', Helvetica, Arial, sans-serif" font-size="18" fill="#9c9891">Every AI understands your surroundings.</text>
+  <text x="74" y="268" font-family="'Segoe UI', Helvetica, Arial, sans-serif" font-size="18" fill="#9c9891">Every AI understands your surroundings, without reflecting on it again.</text>
 </svg>

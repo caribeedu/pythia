@@ -1,7 +1,7 @@
 [project]
 name = "pythia-knowledge"
 dynamic = ["version"]
-description = "Personal knowledge oracle"
+description = "Personal knowledge oracle: atomic claims with provenance and time, syntheses and connections over them, delivered to your LLMs through hooks and MCP"
 license = "MIT"
 license-files = ["LICENSE"]
 readme = "README.md"
